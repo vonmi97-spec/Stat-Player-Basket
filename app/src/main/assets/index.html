@@ -149,7 +149,8 @@ function render(){
 function installHint(){return (IOS&&!STANDALONE)?`<div class="card" style="border:1px solid var(--or)"><h2>📲 Installer sur l'iPhone</h2><p style="margin:0">Dans Safari, touche <b>Partager</b> (carré avec flèche vers le haut) puis <b>« Sur l'écran d'accueil »</b>, puis <b>Ajouter</b>. L'appli s'ouvrira en plein écran, hors connexion, et tes données seront conservées.</p></div>`:""}
 function vJoueurs(){
  const st=D.ended?"🏁 Terminé":D.clock.run?"▶️ En cours":(D.clock.el||D.log.length)?"⏸️ En pause":"Pas encore commencé";
- $("#app").innerHTML=installHint()+`<div class="card" style="border:1px solid var(--or)"><h2>🏀 Match ${D.match.opp?"vs "+esc(D.match.opp):"en cours"}</h2>
+ $("#app").innerHTML=installHint()+`<div class="card" style="border:1px solid var(--or)"><h2>${TYPES[mt(D.match)].i} ${TYPES[mt(D.match)].l} ${D.match.opp?"vs "+esc(D.match.opp):"en cours"}</h2>
+ <div class="chips" style="margin-bottom:8px;flex-wrap:wrap">${Object.entries(TYPES).map(([k,v])=>`<button class="chip ${mt(D.match)===k?"on":""}" onclick="setType('${k}')">${v.i} ${v.l.replace("Match d'","").replace("Match ","").replace(/^./,c=>c.toUpperCase())}</button>`).join("")}</div>
  <p class="mut" style="margin:0 0 10px">${esc(D.match.date.slice(8,10)+"/"+D.match.date.slice(5,7)+"/"+D.match.date.slice(0,4))} · ${st} · ${D.players.reduce((a,x)=>a+pts(S(x.id)),0)} pts · ${fmt(clockEl())}</p>
  <div class="row"><button class="b red" onclick="newMatch()">🆕 Nouveau match</button>${cur!=="guest"?`<button class="b gr" onclick="syncDlg()">🔄 Synchroniser</button>`:`<button class="b gr" onclick="importDlg()">📥 Rejoindre un compte</button>`}</div></div>
  <div class="card"><h2>Ajouter un joueur</h2>
@@ -219,7 +220,7 @@ function vStats(){
  const tot=rows.reduce((a,{s})=>{for(const k in s)a[k]=(a[k]||0)+s[k];return a},{});
  const best=(f)=>rows.length?rows.reduce((a,b)=>f(b.s)>f(a.s)?b:a):null;
  const tp=best(pts),tr=best(s=>s.reb),ta=best(s=>s.pas);
- $("#app").innerHTML=`<div class="card"><h2>${esc(D.match.opp?"Match vs "+D.match.opp:"Match")} · ${esc(D.match.date)}</h2>
+ $("#app").innerHTML=`<div class="card"><h2>${TYPES[mt(D.match)].i} ${TYPES[mt(D.match)].l}${D.match.opp?" vs "+esc(D.match.opp):""} · ${esc(D.match.date.slice(8,10)+"/"+D.match.date.slice(5,7))}</h2>
  <div class="score"><div><b>${D.players.length?pts(tot):0}</b><span>Points équipe</span></div><div><b>${tot.reb||0}</b><span>Rebonds</span></div><div><b>${tot.pas||0}</b><span>Passes</span></div><div><b>${tot.per||0}</b><span>Pertes</span></div></div></div>
  ${rows.length?`<div class="card"><h2>🏆 Meilleurs</h2><p style="margin:0">Marqueur : <b>${esc(tp.p.name)}</b> (${pts(tp.s)} pts)<br>Rebondeur : <b>${esc(tr.p.name)}</b> (${tr.s.reb})<br>Passeur : <b>${esc(ta.p.name)}</b> (${ta.s.pas})</p></div>`:""}
  <div class="card"><h2>Feuille de stats</h2><div class="tw"><table><tr><th>Joueur</th><th>Min</th><th>Pts</th><th>Tirs</th><th>% ✓</th><th>% ✗</th><th>3 pts</th><th>LF</th><th>Reb</th><th>Int</th><th>Ctr</th><th>Pas</th><th>Déf</th><th>Pdb</th><th>F</th><th>FS</th><th>Éval</th><th>Note</th></tr>
@@ -233,7 +234,7 @@ function vStats(){
 function statsText(){let t=`🏀 Stat Player : Basket\n${D.match.opp?"Match vs "+D.match.opp+" – ":""}${D.match.date}\n\n`;
  D.players.forEach(p=>{const s=S(p.id);t+=`${p.num?"#"+p.num+" ":""}${p.name} : ${pts(s)} pts, ${s.reb} reb (${z(s.rebO)} off./${z(s.rebD)} déf.), ${s.pas} passes, ${z(s.int)} int, ${s.ctr} ctr, ${s.def} déf, ${s.per} pertes (${z(s.perP)} prov./${z(s.perU)} pers.), ${s.fau} F, ${z(s.fsu)} FS, tirs ${fgM(s)}/${fgA(s)} (${pct(fgM(s),fgA(s))}), LF ${s.lfR}/${s.lfR+s.lfM}, ${fmt(ptime(p.id))} min${played(p.id)?", note "+note(s)+"/100":""}\n`});return t}
 function shareStats(){const t=statsText();if(window.Android&&Android.share){Android.share(t)}else if(navigator.share){navigator.share({text:t}).catch(()=>{})}else{try{navigator.clipboard.writeText(t);toast("Bilan copié")}catch(e){alert(t)}}}
-function newMatch(){if(D.dirty&&!confirm("⚠️ Les stats de ce match n'ont pas été enregistrées. Elles seront perdues. Continuer ?"))return;if(!confirm("Commencer un nouveau match ? Les stats et temps de jeu seront remis à zéro (les joueurs et l'historique sont conservés)."))return;D.dirty=false;D.curHist=null;D.ended=false;D.stats={};D.time={};D.onCourt={};D.log=[];D.clock={run:false,start:0,el:0};D.match={name:"",opp:"",date:new Date().toISOString().slice(0,10)};save();toast("Nouveau match prêt");render()}
+function newMatch(){if(D.dirty&&!confirm("⚠️ Les stats de ce match n'ont pas été enregistrées. Elles seront perdues. Continuer ?"))return;if(!confirm("Commencer un nouveau match ? Les stats et temps de jeu seront remis à zéro (les joueurs et l'historique sont conservés)."))return;D.dirty=false;D.curHist=null;D.ended=false;D.stats={};D.time={};D.onCourt={};D.log=[];D.clock={run:false,start:0,el:0};D.match={name:"",opp:"",type:mt(D.match),date:new Date().toISOString().slice(0,10)};save();toast("Nouveau match prêt : "+TYPES[mt(D.match)].l);render()}
 
 /* ===== Protection des données ===== */
 function vDonnees(){
@@ -253,7 +254,7 @@ function vDonnees(){
  <div class="row"><button class="b" onclick="showPin('set1')">${D.pinHash?"Changer le PIN":"Définir un PIN"}</button>${D.pinHash?`<button class="b sec" onclick="remPin()">Retirer le PIN</button>`:""}</div></div>
  <div class="card"><h2>📦 Mes données (droit d'accès)</h2><p class="mut">Exporte toutes les données dans un fichier texte que tu peux garder.</p><button class="b sec" style="width:100%" onclick="exportData()">📤 Exporter mes données</button></div>
  <div class="card"><h2>🗑️ Droit à l'effacement</h2><p class="mut">Supprime définitivement tous les joueurs, stats et réglages de ce téléphone.</p><button class="b red" style="width:100%" onclick="wipe()">Effacer toutes les données</button></div>
- <p class="mut" style="text-align:center">Stat Player : Basket · v1.20</p>`;
+ <p class="mut" style="text-align:center">Stat Player : Basket · v1.21</p>`;
 }
 function exportData(){const c={...D};delete c.pinHash;const t=JSON.stringify(c,null,2);if(window.Android&&Android.share)Android.share(t);else if(navigator.share)navigator.share({text:t}).catch(()=>{});else{try{navigator.clipboard.writeText(t);toast("Données copiées")}catch(e){alert(t)}}}
 function wipe(){if(!confirm("Effacer TOUTES les données ? Action irréversible."))return;if(!confirm("Confirmer l'effacement définitif ?"))return;try{localStorage.removeItem(dkey())}catch(e){}delete memS[dkey()];D=blank();unlocked=true;sel=null;tab="joueurs";render();toast("Données effacées","var(--rd)")}
@@ -282,7 +283,15 @@ document.addEventListener("visibilitychange",()=>{if(!cur)return;if(document.hid
 const KS=["p2","p2M","p3","p3M","lfR","lfM","reb","rebO","rebD","int","ctr","pas","def","per","perP","perU","fau","fsu"];
 const ALSO={rebO:"reb",rebD:"reb",perP:"per",perU:"per"}; // un rebond offensif/défensif compte aussi dans le total des rebonds
 const played=id=>KS.some(k=>S(id)[k]>0)||ptime(id)>0;
-function histOf(id){return D.history.filter(m=>m.players[id]).map(m=>({m,s:m.players[id]})).sort((a,b)=>a.m.date<b.m.date?1:-1)}
+/* ===== Types de match : championnat, amical, entraînement ===== */
+const TYPES={off:{i:"🏆",l:"Championnat"},ami:{i:"🤝",l:"Match amical"},ent:{i:"🏋️",l:"Match d'entraînement"}};
+const mt=m=>TYPES[m&&m.type]?m.type:"off";
+let hf="all"; // onglet de filtre affiché dans Stats et la fiche joueur
+const inF=m=>hf==="all"||mt(m)===hf;
+function typeTabs(){const c=t=>D.history.filter(m=>t==="all"||mt(m)===t).length;
+ return`<div class="chips" style="margin-bottom:10px;flex-wrap:wrap">${[["all","📋","Tous"],...Object.entries(TYPES).map(([k,v])=>[k,v.i,v.l.replace("Match d'","").replace("Match ","")])].map(([k,i,l])=>`<button class="chip ${hf===k?"on":""}" onclick="hf='${k}';render()">${i} ${l[0].toUpperCase()+l.slice(1)} (${c(k)})</button>`).join("")}</div>`}
+function setType(t){D.match.type=t;const m=D.curHist&&D.history.find(x=>x.id===D.curHist);if(m)m.type=t;save();render()}
+function histOf(id){return D.history.filter(m=>m.players[id]&&inF(m)).map(m=>({m,s:m.players[id]})).sort((a,b)=>a.m.date<b.m.date?1:-1)}
 function saveDlg(){
  if(!D.players.length)return toast("Aucun joueur","var(--rd)");
  const o=$("#ov");o.classList.remove("hid");
@@ -297,7 +306,7 @@ function doSave(){
  commitTimes();
  let m=D.curHist&&D.history.find(x=>x.id===D.curHist);
  if(!m){m={id:"m"+Date.now().toString(36),players:{}};D.history.push(m);D.curHist=m.id}
- m.date=D.match.date;m.opp=D.match.opp;
+ m.date=D.match.date;m.opp=D.match.opp;m.type=mt(D.match);
  ids.forEach(id=>{m.players[id]={...S(id),min:ptime(id),note100:note(S(id))}});
  D.dirty=false;save();showNotes(ids);
 }
@@ -309,12 +318,13 @@ function vFiche(){
  const av=v=>n?(v/n).toFixed(1).replace(".0",""):"0",lfT=T.lfR+T.lfM,nm=avgNote(fp),OB=D.obs.filter(o=>o.pid===fp).sort((a,b)=>b.ts-a.ts);
  $("#app").innerHTML=`<button class="b sec" style="margin-bottom:12px" onclick="tab='joueurs';render()">‹ Joueurs</button>
  <div class="card"><div class="row" style="gap:12px"><div class="num" style="width:56px;height:56px;font-size:22px;flex:none">${esc(p.num||"–")}</div><div><h2 style="margin:0;font-size:20px">${esc(p.name)}</h2><div class="mut">${n} match${n>1?"s":""} enregistré${n>1?"s":""}</div></div>${nm!=null?`<div style="text-align:center;flex:none"><div class="nt" style="background:${nCol(nm)};font-size:22px;padding:6px 10px">${nm}</div><div class="mut" style="font-size:11px;margin-top:3px">Note moy. /100</div></div>`:""}</div></div>
- <div class="card"><h2>📈 Moyennes par match</h2><div class="score">
+ ${D.history.some(m=>m.players[fp])?`<div class="card" style="padding-bottom:4px">${typeTabs()}</div>`:""}
+ <div class="card"><h2>📈 Moyennes par match${hf!=="all"?" – "+TYPES[hf].l.toLowerCase():""}</h2><div class="score">
  <div><b>${av(pts(T))}</b><span>Points</span></div><div><b>${av(T.reb)}</b><span>Rebonds</span></div><div><b>${av(T.pas)}</b><span>Passes</span></div><div><b>${fmt(n?T.min/n:0)}</b><span>Temps</span></div>
  <div><b>${av(T.ctr+T.int)}</b><span>Contres + int.</span></div><div><b>${av(T.def)}</b><span>Déf. réussies</span></div><div><b>${av(T.per)}</b><span>Pertes</span></div><div><b>${av(T.fau)}</b><span>Fautes</span></div></div>
  <p class="mut" style="margin:10px 0 0">Tirs : <b style="color:var(--txt)">${fgM(T)}/${fgA(T)}</b> (${pct(fgM(T),fgA(T))} réussis, ${pct(fgA(T)-fgM(T),fgA(T))} ratés) · 3 pts : <b style="color:var(--txt)">${z(T.p3)}/${z(T.p3)+z(T.p3M)}</b><br>Lancers francs : <b style="color:var(--txt)">${T.lfR}/${lfT}</b> ${lfT?`(${Math.round(T.lfR*100/lfT)} %)`:""} · Total : <b style="color:var(--txt)">${pts(T)} pts</b>, ${T.reb} reb, ${T.pas} passes</p></div>
  <div class="card"><h2>📅 Matchs enregistrés</h2>${n?`<div class="tw"><table><tr><th>Match</th><th>Min</th><th>Pts</th><th>LF</th><th>Reb</th><th>Int</th><th>Ctr</th><th>Pas</th><th>Déf</th><th>Pdb</th><th>F</th><th>Note</th><th></th></tr>
- ${H.map(({m,s})=>`<tr><td>${esc(m.date.slice(8,10)+"/"+m.date.slice(5,7))}${m.opp?"<br><span class='mut'>"+esc(m.opp)+"</span>":""}</td><td>${fmt(s.min||0)}</td><td><b>${pts(s)}</b></td><td>${s.lfR}/${s.lfR+s.lfM}</td><td>${s.reb}${z(s.rebO)+z(s.rebD)?`<br><small class="mut">${z(s.rebO)}o/${z(s.rebD)}d</small>`:""}</td><td>${z(s.int)}</td><td>${s.ctr}</td><td>${s.pas}</td><td>${s.def}</td><td>${s.per}</td><td>${s.fau}</td><td>${nB(note(s))}</td><td><button class="ico" style="font-size:15px;padding:2px" onclick="delHist('${m.id}')">🗑️</button></td></tr>`).join("")}</table></div>`:`<p class="mut">Aucun match enregistré. Dans l'onglet <b>Stats</b>, touche « Enregistrer les stats des joueurs sélectionnés ».</p>`}</div>
+ ${H.map(({m,s})=>`<tr><td>${TYPES[mt(m)].i} ${esc(m.date.slice(8,10)+"/"+m.date.slice(5,7))}${m.opp?"<br><span class='mut'>"+esc(m.opp)+"</span>":""}</td><td>${fmt(s.min||0)}</td><td><b>${pts(s)}</b></td><td>${s.lfR}/${s.lfR+s.lfM}</td><td>${s.reb}${z(s.rebO)+z(s.rebD)?`<br><small class="mut">${z(s.rebO)}o/${z(s.rebD)}d</small>`:""}</td><td>${z(s.int)}</td><td>${s.ctr}</td><td>${s.pas}</td><td>${s.def}</td><td>${s.per}</td><td>${s.fau}</td><td>${nB(note(s))}</td><td><button class="ico" style="font-size:15px;padding:2px" onclick="delHist('${m.id}')">🗑️</button></td></tr>`).join("")}</table></div>`:`<p class="mut">Aucun match enregistré. Dans l'onglet <b>Stats</b>, touche « Enregistrer les stats des joueurs sélectionnés ».</p>`}</div>
  <div class="card"><h2>📝 Notes (${OB.length})</h2>${OB.length?OB.map(obHtml).join(""):`<p class="mut">Aucune note. Utilise l'onglet <b>Note</b>.</p>`}<button class="b sec" style="width:100%;margin-top:6px" onclick="sel='${fp}';tab='observer';render()">＋ Ajouter une note</button></div>
  ${n||OB.length?`<button class="b" style="width:100%" onclick="shareFiche()">📤 Partager la fiche</button>`:""}`;
 }
@@ -333,10 +343,11 @@ function showNotes(ids){const o=$("#ov");o.classList.remove("hid");
  <button class="b" style="width:100%;margin-top:8px" onclick="render()">OK</button></div>`}
 function seasonCard(){
  const R=D.players.map(p=>{const H=histOf(p.id),n=H.length,T={min:0};KS.forEach(k=>T[k]=0);H.forEach(({s})=>{KS.forEach(k=>T[k]+=s[k]||0);T.min+=s.min||0});return{p,n,T}}).filter(x=>x.n);
- if(!R.length)return"";
+ if(!D.history.length)return"";
+ if(!R.length)return`<div class="card"><h2>📊 Moyennes par joueur</h2>${typeTabs()}<p class="mut">Aucun match enregistré dans cette catégorie.</p></div>`;
  const a=(v,n)=>(v/n).toFixed(1).replace(".0","").replace(".",",");
  R.sort((x,y)=>(avgNote(y.p.id)||0)-(avgNote(x.p.id)||0));
- return`<div class="card"><h2>📊 Moyennes par joueur (matchs enregistrés)</h2><div class="tw"><table><tr><th>Joueur</th><th>MJ</th><th>Pts</th><th>Reb</th><th>Pas</th><th>Int</th><th>Ctr</th><th>Déf</th><th>Pdb</th><th>F</th><th>LF%</th><th>Note</th></tr>
+ return`<div class="card"><h2>📊 Moyennes par joueur</h2>${typeTabs()}<div class="tw"><table><tr><th>Joueur</th><th>MJ</th><th>Pts</th><th>Reb</th><th>Pas</th><th>Int</th><th>Ctr</th><th>Déf</th><th>Pdb</th><th>F</th><th>LF%</th><th>Note</th></tr>
  ${R.map(({p,n,T})=>{const l=T.lfR+T.lfM;return`<tr class="lk" onclick="openFiche('${p.id}')"><td>${esc(p.name)}</td><td>${n}</td><td><b>${a(pts(T),n)}</b></td><td>${a(T.reb,n)}</td><td>${a(T.pas,n)}</td><td>${a(T.int,n)}</td><td>${a(T.ctr,n)}</td><td>${a(T.def,n)}</td><td>${a(T.per,n)}</td><td>${a(T.fau,n)}</td><td>${l?Math.round(T.lfR*100/l):"–"}</td><td>${nB(avgNote(p.id))}</td></tr>`}).join("")}</table></div>
  <p class="mut" style="margin:8px 0 0">MJ = matchs joués · moyennes par match · touche un joueur pour voir sa fiche</p></div>`}
 
@@ -474,7 +485,7 @@ async function doImport(){const t=$("#imt").value.replace(/\s/g,""),pw=$("#imp")
    pour un joueur présent des deux côtés, on garde la feuille la plus complète. */
 const acts=s=>KS.reduce((a,k)=>a+(s[k]||0),0)+(s.min||0)/60000;
 function mergeData(L,I,cnt){cnt=cnt||{p:0,m:0,o:0,u:0};L.players=L.players||[];(I.players||[]).forEach(p=>{const x=L.players.find(q=>q.id===p.id);if(x){x.name=p.name;x.num=p.num}else{L.players.push(p);cnt.p++}});
- L.history=L.history||[];(I.history||[]).forEach(m=>{const k=x=>x.date+"|"+norm(x.opp||"");let x=L.history.find(q=>q.id===m.id)||L.history.find(q=>k(q)===k(m));
+ L.history=L.history||[];(I.history||[]).forEach(m=>{const k=x=>x.date+"|"+norm(x.opp||"")+"|"+mt(x);let x=L.history.find(q=>q.id===m.id)||L.history.find(q=>k(q)===k(m));
   if(!x){L.history.push(JSON.parse(JSON.stringify(m)));cnt.m++;return}
   for(const id in m.players){const a=x.players[id],b=m.players[id];if(!a||acts(b)>acts(a)){x.players[id]=b;cnt.u++}}});
  L.obs=L.obs||[];(I.obs||[]).forEach(o=>{if(!L.obs.some(q=>q.id===o.id)){L.obs.push(o);cnt.o++}});L.consent=L.consent||I.consent;L._cnt=cnt;return L}
@@ -505,16 +516,16 @@ function exportAs(f){commitTimes();const m=exScope!=="season",se=exScope!=="matc
   if(se&&R.length){t+=`\n📊 Moyennes par match (saison)\n`;R.forEach(({p,n,T,nm})=>{const l=T.lfR+T.lfM;t+=`${p.name} (${n} MJ) : ${av1(pts(T),n)} pts, ${av1(T.reb,n)} reb, ${av1(T.pas,n)} passes, ${av1(T.int,n)} int, ${av1(T.ctr,n)} ctr, ${av1(T.def,n)} déf, ${av1(T.per,n)} pertes, ${av1(T.fau,n)} F, LF ${l?Math.round(T.lfR*100/l)+" %":"–"}, note ${nm}/100\n`})}
   if(window.Android&&Android.share)Android.share(t);else if(navigator.share)navigator.share({text:t}).catch(()=>{});else{try{navigator.clipboard.writeText(t);toast("Copié")}catch(e){alert(t)}}return render()}
  if(f==="csv"){const q=v=>{v=String(v??"");return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v},L=[],row=a=>L.push(a.map(q).join(";"));
-  if(m){row(["Match",D.match.opp?"vs "+D.match.opp:"",D.match.date]);row(["Joueur","N°","Temps de jeu","Points","Tirs 2 pts réussis","Tirs 2 pts ratés","Tirs 3 pts réussis","Tirs 3 pts ratés","Tirs réussis","Tirs tentés","% tirs réussis","% tirs ratés","LF réussis","LF tentés","Rebonds","Rebonds offensifs","Rebonds défensifs","Interceptions","Contres","Passes","Défenses réussies","Pertes de balle","Pertes provoquées","Pertes personnelles","Fautes provoquées","Fautes subies","Évaluation","Note /100"]);
+  if(m){row([TYPES[mt(D.match)].l,D.match.opp?"vs "+D.match.opp:"",D.match.date]);row(["Joueur","N°","Temps de jeu","Points","Tirs 2 pts réussis","Tirs 2 pts ratés","Tirs 3 pts réussis","Tirs 3 pts ratés","Tirs réussis","Tirs tentés","% tirs réussis","% tirs ratés","LF réussis","LF tentés","Rebonds","Rebonds offensifs","Rebonds défensifs","Interceptions","Contres","Passes","Défenses réussies","Pertes de balle","Pertes provoquées","Pertes personnelles","Fautes provoquées","Fautes subies","Évaluation","Note /100"]);
    D.players.forEach(p=>{const s=S(p.id);row([p.name,p.num||"",fmt(ptime(p.id)),pts(s),s.p2,s.p2M,s.p3,s.p3M,fgM(s),fgA(s),fgA(s)?Math.round(fgM(s)*100/fgA(s)):"",fgA(s)?Math.round((fgA(s)-fgM(s))*100/fgA(s)):"",s.lfR,s.lfR+s.lfM,s.reb,z(s.rebO),z(s.rebD),z(s.int),s.ctr,s.pas,s.def,s.per,z(s.perP),z(s.perU),s.fau,z(s.fsu),ev(s),played(p.id)?note(s):""])});L.push("")}
-  if(se&&R.length){row(["Moyennes par match (saison)"]);row(["Joueur","N°","Matchs joués","Temps moyen","Points","% tirs réussis","Rebonds","Passes","Interceptions","Contres","Défenses réussies","Pertes de balle","Fautes","LF %","Note moyenne /100"]);
+  if(se&&R.length){row(["Moyennes par match (saison)",hf==="all"?"Tous les matchs":TYPES[hf].l]);row(["Joueur","N°","Matchs joués","Temps moyen","Points","% tirs réussis","Rebonds","Passes","Interceptions","Contres","Défenses réussies","Pertes de balle","Fautes","LF %","Note moyenne /100"]);
    R.forEach(({p,n,T,nm})=>{const l=T.lfR+T.lfM;row([p.name,p.num||"",n,fmt(T.min/n),av1(pts(T),n),fgA(T)?Math.round(fgM(T)*100/fgA(T)):"",av1(T.reb,n),av1(T.pas,n),av1(T.int,n),av1(T.ctr,n),av1(T.def,n),av1(T.per,n),av1(T.fau,n),l?Math.round(T.lfR*100/l):"",nm])});L.push("");
-   row(["Historique des matchs enregistrés"]);row(["Date","Adversaire","Joueur","Temps de jeu","Points","Tirs réussis","Tirs tentés","LF réussis","LF tentés","Rebonds","Rebonds offensifs","Rebonds défensifs","Interceptions","Contres","Passes","Défenses réussies","Pertes de balle","Pertes provoquées","Pertes personnelles","Fautes provoquées","Fautes subies","Note /100"]);
-   [...D.history].sort((a,b)=>a.date<b.date?-1:1).forEach(h=>Object.entries(h.players).forEach(([id,s])=>{const p=D.players.find(x=>x.id===id);if(p)row([h.date,h.opp||"",p.name,fmt(s.min||0),pts(s),fgM(s),fgA(s),z(s.lfR),s.lfR+s.lfM,s.reb,z(s.rebO),z(s.rebD),z(s.int),s.ctr,s.pas,s.def,s.per,z(s.perP),z(s.perU),s.fau,z(s.fsu),note(s)])}))}
+   row(["Historique des matchs enregistrés"]);row(["Date","Type","Adversaire","Joueur","Temps de jeu","Points","Tirs réussis","Tirs tentés","LF réussis","LF tentés","Rebonds","Rebonds offensifs","Rebonds défensifs","Interceptions","Contres","Passes","Défenses réussies","Pertes de balle","Pertes provoquées","Pertes personnelles","Fautes provoquées","Fautes subies","Note /100"]);
+   [...D.history].filter(inF).sort((a,b)=>a.date<b.date?-1:1).forEach(h=>Object.entries(h.players).forEach(([id,s])=>{const p=D.players.find(x=>x.id===id);if(p)row([h.date,TYPES[mt(h)].l,h.opp||"",p.name,fmt(s.min||0),pts(s),fgM(s),fgA(s),z(s.lfR),s.lfR+s.lfM,s.reb,z(s.rebO),z(s.rebD),z(s.int),s.ctr,s.pas,s.def,s.per,z(s.perP),z(s.perU),s.fau,z(s.fsu),note(s)])}))}
   sendFile(exName("csv"),"﻿"+L.join("\r\n"),"text/csv");return render()}
  if(f==="pdf"){const th=a=>`<tr>${a.map(x=>`<th>${x}</th>`).join("")}</tr>`,tr=a=>`<tr>${a.map(x=>`<td>${x}</td>`).join("")}</tr>`;let b="";
-  if(m){b+=`<h2>Match ${D.match.opp?"vs "+esc(D.match.opp):""} – ${esc(D.match.date)}</h2><p>Score équipe : <b>${D.players.reduce((a,x)=>a+pts(S(x.id)),0)} pts</b></p><table>${th(["Joueur","Min","Pts","Tirs","% réussi","% raté","LF","Reb","Int","Ctr","Pas","Déf","Pdb","F","FS","Éval","Note"])}${D.players.map(p=>{const s=S(p.id);return tr([(p.num?"#"+esc(p.num)+" ":"")+esc(p.name),fmt(ptime(p.id)),"<b>"+pts(s)+"</b>",fgM(s)+"/"+fgA(s),pct(fgM(s),fgA(s)),pct(fgA(s)-fgM(s),fgA(s)),s.lfR+"/"+(s.lfR+s.lfM),s.reb,z(s.int),s.ctr,s.pas,s.def,s.per,s.fau,z(s.fsu),ev(s),played(p.id)?"<b>"+note(s)+"</b>":"–"])}).join("")}</table>`}
-  if(se&&R.length){b+=`<h2>Moyennes par match – saison</h2><table>${th(["Joueur","MJ","Min","Pts","Reb","Pas","Int","Ctr","Déf","Pdb","F","LF %","Note moy."])}${R.map(({p,n,T,nm})=>{const l=T.lfR+T.lfM;return tr([esc(p.name),n,fmt(T.min/n),"<b>"+av1(pts(T),n)+"</b>",av1(T.reb,n),av1(T.pas,n),av1(T.int,n),av1(T.ctr,n),av1(T.def,n),av1(T.per,n),av1(T.fau,n),l?Math.round(T.lfR*100/l)+" %":"–","<b>"+nm+"</b>"])}).join("")}</table>`}
+  if(m){b+=`<h2>${TYPES[mt(D.match)].l} ${D.match.opp?"vs "+esc(D.match.opp):""} – ${esc(D.match.date)}</h2><p>Score équipe : <b>${D.players.reduce((a,x)=>a+pts(S(x.id)),0)} pts</b></p><table>${th(["Joueur","Min","Pts","Tirs","% réussi","% raté","LF","Reb","Int","Ctr","Pas","Déf","Pdb","F","FS","Éval","Note"])}${D.players.map(p=>{const s=S(p.id);return tr([(p.num?"#"+esc(p.num)+" ":"")+esc(p.name),fmt(ptime(p.id)),"<b>"+pts(s)+"</b>",fgM(s)+"/"+fgA(s),pct(fgM(s),fgA(s)),pct(fgA(s)-fgM(s),fgA(s)),s.lfR+"/"+(s.lfR+s.lfM),s.reb,z(s.int),s.ctr,s.pas,s.def,s.per,s.fau,z(s.fsu),ev(s),played(p.id)?"<b>"+note(s)+"</b>":"–"])}).join("")}</table>`}
+  if(se&&R.length){b+=`<h2>Moyennes par match – ${hf==="all"?"tous les matchs":TYPES[hf].l.toLowerCase()}</h2><table>${th(["Joueur","MJ","Min","Pts","Reb","Pas","Int","Ctr","Déf","Pdb","F","LF %","Note moy."])}${R.map(({p,n,T,nm})=>{const l=T.lfR+T.lfM;return tr([esc(p.name),n,fmt(T.min/n),"<b>"+av1(pts(T),n)+"</b>",av1(T.reb,n),av1(T.pas,n),av1(T.int,n),av1(T.ctr,n),av1(T.def,n),av1(T.per,n),av1(T.fau,n),l?Math.round(T.lfR*100/l)+" %":"–","<b>"+nm+"</b>"])}).join("")}</table>`}
   if(!b)return toast("Rien à exporter","var(--yl)");
   const html=`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Stat Player – ${esc(D.match.date)}</title><style>body{font-family:Arial,sans-serif;color:#111;margin:24px;font-size:12px}h1{color:#ea580c;margin:0 0 4px;font-size:22px}h2{font-size:15px;margin:22px 0 6px;color:#0f172a;border-bottom:2px solid #f97316;padding-bottom:3px}table{width:100%;border-collapse:collapse}th{background:#0f172a;color:#fff;font-size:10px;padding:5px 3px}td{padding:5px 3px;border-bottom:1px solid #ddd;text-align:center}td:first-child,th:first-child{text-align:left}tr:nth-child(even) td{background:#f8fafc}.f{margin-top:24px;color:#666;font-size:9px}</style></head><body><h1>🏀 Stat Player : Basket</h1><div>Rapport du ${new Date().toLocaleDateString("fr-FR")}</div>${b}<p class="f">Pdb = pertes de balle · MJ = matchs joués · Tirs = réussis/tentés (2 et 3 pts) · Éval = pts + reb + passes + interceptions + contres + déf. réussies + fautes subies − pertes − fautes provoquées − tirs ratés − LF ratés · F = fautes provoquées · FS = fautes subies · Note /100 = 40 + 4 × Éval</p></body></html>`;
   if(window.AndroidPrint){AndroidPrint.print(html,"StatPlayer-"+D.match.date);toast("Choisis « Enregistrer au format PDF »");return render()}
