@@ -17,7 +17,9 @@ jobs:
         env: { KEYSTORE_B64: '${{ secrets.KEYSTORE_B64 }}' }
         run: |
           if [ -z "$KEYSTORE_B64" ]; then echo "::error::Secret KEYSTORE_B64 manquant"; exit 1; fi
-          echo "$KEYSTORE_B64" | tr -d ' \n\r' | base64 -d > app/statplayer.jks
+          CLEAN=$(printf '%s' "$KEYSTORE_B64" | tr -cd 'A-Za-z0-9+/=')
+          echo "Longueur du secret nettoyé : ${#CLEAN} (attendu : 3564)"
+          printf '%s' "$CLEAN" | base64 -d > app/statplayer.jks || { echo "::error::KEYSTORE_B64 incomplet (${#CLEAN}/3564 caractères) : recolle le contenu entier du fichier"; exit 1; }
       - run: gradle assembleRelease --no-daemon
         env: { KEYSTORE_PASSWORD: '${{ secrets.KEYSTORE_PASSWORD }}' }
       - run: cp app/build/outputs/apk/release/app-release.apk StatPlayer-Basket.apk
