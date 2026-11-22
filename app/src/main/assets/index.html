@@ -99,18 +99,18 @@ function openSpace(id,already){cur=id;A.last=id;saveA();D=load()||blank();if(!D.
 function logout(){commitTimes();save();cur=null;D=blank();unlocked=false;render();toast("Déconnecté","var(--line)")}
 
 const ST=[
- {k:"p2",l:"2 pts",s:"Panier",c:"var(--or)",pts:2},
- {k:"p3",l:"3 pts",s:"Panier",c:"#ea580c",pts:3},
- {k:"lfR",l:"LF ✓",s:"Lancer franc réussi",c:"var(--gr)",pts:1},
+ {k:"p2",l:"2 pts",s:"Réussi / raté",c:"#f97316",pts:2,shot:1},
+ {k:"p3",l:"3 pts",s:"Réussi / raté",c:"#ea580c",pts:3,shot:1},
+ {k:"lfR",l:"LF ✓",s:"Lancer franc réussi",c:"#22c55e",pts:1},
  {k:"lfM",l:"LF ✗",s:"Lancer franc raté",c:"#15803d"},
- {k:"reb",l:"Rebond",s:"",c:"var(--bl)"},
- {k:"ctr",l:"Contre",s:"",c:"var(--pu)"},
+ {k:"reb",l:"Rebond",s:"",c:"#3b82f6"},
+ {k:"ctr",l:"Contre",s:"",c:"#a855f7"},
  {k:"pas",l:"Passe",s:"réalisée",c:"#0891b2"},
  {k:"def",l:"Défense",s:"réussie",c:"#0d9488"},
  {k:"per",l:"Perte",s:"de balle",c:"#b91c1c"},
- {k:"fau",l:"Faute",s:"",c:"var(--rd)"}
+ {k:"fau",l:"Faute",s:"",c:"#ef4444"}
 ];
-const LAB={p2:"Panier 2 pts",p3:"Panier 3 pts",lfR:"Lancer franc réussi",lfM:"Lancer franc raté",reb:"Rebond",ctr:"Contre",pas:"Passe réalisée",def:"Défense réussie",per:"Perte de balle",fau:"Faute"};
+const LAB={p2:"Tir 2 pts réussi",p2M:"Tir 2 pts raté",p3:"Tir 3 pts réussi",p3M:"Tir 3 pts raté",lfR:"Lancer franc réussi",lfM:"Lancer franc raté",reb:"Rebond",ctr:"Contre",pas:"Passe réalisée",def:"Défense réussie",per:"Perte de balle",fau:"Faute"};
 
 const NATIVE=!!window.Android, IOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
 const STANDALONE=window.navigator.standalone===true||matchMedia("(display-mode: standalone)").matches;
@@ -119,9 +119,13 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"
 function toast(t,c){const e=$("#toast");e.textContent=t;e.style.background=c||"var(--gr)";e.classList.add("s");clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove("s"),1300)}
 function vib(){try{navigator.vibrate&&navigator.vibrate(25)}catch(e){}}
 async function hash(s){try{const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode("sp-basket:"+s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}catch(e){let h=0;for(const c of "sp-basket:"+s)h=(h*31+c.charCodeAt(0))|0;return"x"+h}}
-const S=id=>D.stats[id]||(D.stats[id]={p2:0,p3:0,lfR:0,lfM:0,reb:0,ctr:0,pas:0,def:0,per:0,fau:0});
-const pts=s=>s.p2*2+s.p3*3+s.lfR;
-const ev=s=>pts(s)+s.reb+s.pas+s.ctr+s.def-s.per-s.fau-s.lfM;
+const S=id=>{const s=D.stats[id]||(D.stats[id]={});KS.forEach(k=>{if(s[k]==null)s[k]=0});return s};
+const z=v=>v||0,fgM=s=>z(s.p2)+z(s.p3),fgA=s=>fgM(s)+z(s.p2M)+z(s.p3M),pct=(a,b)=>b?Math.round(a*100/b)+" %":"–";
+/* Personnalisation des boutons de stats (ordre + couleurs), propre à chaque compte */
+const stOrder=()=>{const ks=ST.map(t=>t.k),o=((D.ui||{}).order||[]).filter(k=>ks.includes(k));return[...o,...ks.filter(k=>!o.includes(k))].map(k=>ST.find(t=>t.k===k))};
+const stCol=t=>((D.ui||{}).col||{})[t.k]||t.c;
+const pts=s=>z(s.p2)*2+z(s.p3)*3+z(s.lfR);
+const ev=s=>pts(s)+z(s.reb)+z(s.pas)+z(s.ctr)+z(s.def)-z(s.per)-z(s.fau)-z(s.lfM)-z(s.p2M)-z(s.p3M);
 /* Note générale /100 : 40 de base + 4 par point d'évaluation (bornée 0–100) */
 const note=s=>Math.max(0,Math.min(100,Math.round(40+4*ev(s))));
 const nCol=n=>n>=80?"#16a34a":n>=65?"#0d9488":n>=50?"#ca8a04":"#dc2626";
@@ -174,7 +178,8 @@ function vMatch(){
  $("#app").innerHTML=`<div class="card"><div class="row" style="align-items:center"><div style="flex:1.4"><div class="clock" id="mclk" style="font-size:40px;text-align:left">${fmt(clockEl())}</div>
  <div class="mut">${D.ended?"🏁 Match terminé":D.clock.run?"▶️ En cours":"⏸️ Chrono arrêté"} · <b style="color:var(--or)">${team} pts</b></div></div>
  <div style="flex:1;display:flex;flex-direction:column;gap:6px"><button class="b ${D.clock.run?"red":"gr"}" style="padding:10px" onclick="togClock2()">${D.clock.run?"⏸ Pause":(D.ended||D.clock.el)?"▶ Reprendre":"▶ Démarrer"}</button><button class="b" style="background:#0f766e;padding:10px" onclick="endMatch()">🏁 Terminer</button></div></div></div>
- <div class="card"><h2>① Choisis la stat</h2><div class="grid">${ST.map(t=>`<button class="st" style="background:${t.c};${arm?(arm===t.k?"outline:3px solid #fff;outline-offset:2px;transform:scale(1.04)":"opacity:.4"):""}" onclick="arm=arm==='${t.k}'?null:'${t.k}';vMatch()">${t.l}<small>${t.s}</small></button>`).join("")}</div></div>
+ <div class="card"><h2 style="display:flex;justify-content:space-between;align-items:center">① Choisis la stat<button class="chip" onclick="custDlg()">🎨 Personnaliser</button></h2><div class="grid">${stOrder().map(t=>{const on=arm===t.k||(t.shot&&arm===t.k+"M");
+ return`<button class="st" style="background:${stCol(t)};${arm?(on?"outline:3px solid #fff;outline-offset:2px;transform:scale(1.04)":"opacity:.4"):""}" onclick="${t.shot?(on?"arm=null;vMatch()":`shotMenu('${t.k}')`):`arm=arm==='${t.k}'?null:'${t.k}';vMatch()`}">${t.l}<small>${t.shot&&on?(arm.endsWith("M")?"❌ Tir raté":"✅ Tir réussi"):t.s}</small></button>`}).join("")}</div></div>
  <div class="card" style="${arm?"border:2px solid var(--or)":""}"><h2>② ${arm?`Attribuer « ${LAB[arm]} » à…`:"Puis touche le joueur"}</h2>
  ${arm?"":`<p class="mut" style="margin:-4px 0 10px">Sélectionne d'abord une stat ci-dessus.</p>`}
  <div class="grid" style="grid-template-columns:repeat(2,1fr)">${[...D.players].sort((a,b)=>(D.onCourt[b.id]?1:0)-(D.onCourt[a.id]?1:0)).map(x=>{const q=S(x.id);return`<button class="st" style="background:${x.id===sel?"#334155":"#0b1222"};border:1px solid ${q.fau>=5?"var(--rd)":"var(--line)"};display:flex;align-items:center;gap:8px;text-align:left;padding:8px;opacity:${arm?1:.6}" onclick="assign('${x.id}')"><span class="num" style="width:32px;height:32px;font-size:14px">${esc(x.num||"–")}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.name)}${D.onCourt[x.id]?" 🟢":""}<small>${pts(q)} pts · ${q.fau} F${q.fau>=5?" ⚠️":""}</small></span></button>`}).join("")}</div></div>
@@ -190,7 +195,7 @@ let arm=null;
 function assign(id){if(!arm){sel=id;vMatch();return toast("Choisis d'abord une stat","var(--yl)")}sel=id;const k=arm;arm=null;rec(k)}
 function rec(k){D.dirty=true;S(sel)[k]++;D.log.push({id:sel,k,t:fmt(clockEl())});save();vib();toast("+1 "+LAB[k]+" → "+(D.players.find(x=>x.id===sel)||{}).name);vMatch()}
 function undo(){const l=D.log.pop();if(!l)return toast("Rien à annuler","var(--line)");const s=S(l.id);if(s[l.k]>0)s[l.k]--;save();toast("Annulé : "+LAB[l.k],"var(--line)");vMatch()}
-function minus(){const ch=prompt("Retirer 1 à quelle stat ?\n"+ST.map((t,i)=>(i+1)+". "+LAB[t.k]).join("\n"));const i=parseInt(ch)-1;if(!(i>=0&&i<ST.length))return;const k=ST[i].k,s=S(sel);if(s[k]>0){s[k]--;for(let j=D.log.length-1;j>=0;j--)if(D.log[j].id===sel&&D.log[j].k===k){D.log.splice(j,1);break}save();toast("−1 "+LAB[k],"var(--line)")}vMatch()}
+function minus(){const ch=prompt("Retirer 1 à quelle stat ?\n"+KS.map((k,i)=>(i+1)+". "+LAB[k]).join("\n"));const i=parseInt(ch)-1;if(!(i>=0&&i<KS.length))return;const k=KS[i],s=S(sel);if(s[k]>0){s[k]--;for(let j=D.log.length-1;j>=0;j--)if(D.log[j].id===sel&&D.log[j].k===k){D.log.splice(j,1);break}save();toast("−1 "+LAB[k],"var(--line)")}vMatch()}
 
 /* ===== Temps de jeu ===== */
 let tick=null;
@@ -223,15 +228,16 @@ function vStats(){
  $("#app").innerHTML=`<div class="card"><h2>${esc(D.match.opp?"Match vs "+D.match.opp:"Match")} · ${esc(D.match.date)}</h2>
  <div class="score"><div><b>${D.players.length?pts(tot):0}</b><span>Points équipe</span></div><div><b>${tot.reb||0}</b><span>Rebonds</span></div><div><b>${tot.pas||0}</b><span>Passes</span></div><div><b>${tot.per||0}</b><span>Pertes</span></div></div></div>
  ${rows.length?`<div class="card"><h2>🏆 Meilleurs</h2><p style="margin:0">Marqueur : <b>${esc(tp.p.name)}</b> (${pts(tp.s)} pts)<br>Rebondeur : <b>${esc(tr.p.name)}</b> (${tr.s.reb})<br>Passeur : <b>${esc(ta.p.name)}</b> (${ta.s.pas})</p></div>`:""}
- <div class="card"><h2>Feuille de stats</h2><div class="tw"><table><tr><th>Joueur</th><th>Min</th><th>Pts</th><th>LF</th><th>Reb</th><th>Ctr</th><th>Pas</th><th>Déf</th><th>Pdb</th><th>F</th><th>Éval</th><th>Note</th></tr>
- ${rows.map(({p,s})=>`<tr><td>${p.num?"#"+esc(p.num)+" ":""}${esc(p.name)}</td><td>${fmt(ptime(p.id))}</td><td><b>${pts(s)}</b></td><td>${s.lfR}/${s.lfR+s.lfM}</td><td>${s.reb}</td><td>${s.ctr}</td><td>${s.pas}</td><td>${s.def}</td><td>${s.per}</td><td>${s.fau}</td><td>${ev(s)}</td><td>${played(p.id)?nB(note(s)):"–"}</td></tr>`).join("")}</table></div>
- <p class="mut" style="margin:8px 0 0">Pdb = pertes de balle · Éval = pts + reb + passes + contres + déf. réussies − pertes − fautes − LF ratés<br>Note /100 = 40 + 4 × Éval · 🟢 80+ excellent · 🔵 65+ bon · 🟡 50+ correct · 🔴 à améliorer</p></div>
+ <div class="card"><h2>Feuille de stats</h2><div class="tw"><table><tr><th>Joueur</th><th>Min</th><th>Pts</th><th>Tirs</th><th>% ✓</th><th>% ✗</th><th>3 pts</th><th>LF</th><th>Reb</th><th>Ctr</th><th>Pas</th><th>Déf</th><th>Pdb</th><th>F</th><th>Éval</th><th>Note</th></tr>
+ ${rows.map(({p,s})=>`<tr><td>${p.num?"#"+esc(p.num)+" ":""}${esc(p.name)}</td><td>${fmt(ptime(p.id))}</td><td><b>${pts(s)}</b></td><td>${fgM(s)}/${fgA(s)}</td><td style="color:#4ade80">${pct(fgM(s),fgA(s))}</td><td style="color:#f87171">${pct(fgA(s)-fgM(s),fgA(s))}</td><td>${s.p3}/${s.p3+s.p3M}</td><td>${s.lfR}/${s.lfR+s.lfM}</td><td>${s.reb}</td><td>${s.ctr}</td><td>${s.pas}</td><td>${s.def}</td><td>${s.per}</td><td>${s.fau}</td><td>${ev(s)}</td><td>${played(p.id)?nB(note(s)):"–"}</td></tr>`).join("")}
+ ${rows.length?(()=>{const t={};KS.forEach(k=>t[k]=rows.reduce((a,{s})=>a+z(s[k]),0));return`<tr style="font-weight:800;border-top:2px solid var(--or)"><td>Équipe</td><td></td><td>${pts(t)}</td><td>${fgM(t)}/${fgA(t)}</td><td style="color:#4ade80">${pct(fgM(t),fgA(t))}</td><td style="color:#f87171">${pct(fgA(t)-fgM(t),fgA(t))}</td><td>${t.p3}/${t.p3+t.p3M}</td><td>${t.lfR}/${t.lfR+t.lfM}</td><td>${t.reb}</td><td>${t.ctr}</td><td>${t.pas}</td><td>${t.def}</td><td>${t.per}</td><td>${t.fau}</td><td>${ev(t)}</td><td></td></tr>`})():""}</table></div>
+ <p class="mut" style="margin:8px 0 0">Tirs = tirs réussis / tentés (2 et 3 pts, hors LF) · % ✓ réussis · % ✗ ratés · Pdb = pertes de balle<br>Éval = pts + reb + passes + contres + déf. réussies − pertes − fautes − tirs ratés − LF ratés<br>Note /100 = 40 + 4 × Éval · 🟢 80+ excellent · 🔵 65+ bon · 🟡 50+ correct · 🔴 à améliorer</p></div>
  ${seasonCard()}
  <button class="b gr" style="width:100%;margin-bottom:8px" onclick="saveDlg()">💾 Enregistrer les stats des joueurs sélectionnés</button>${D.curHist?`<p class="mut" style="margin:0 0 8px;text-align:center">✅ Match enregistré — un nouvel enregistrement le met à jour</p>`:""}
  <button class="b" style="width:100%" onclick="exportDlg()">📤 Exporter les stats</button>`;
 }
 function statsText(){let t=`🏀 Stat Player : Basket\n${D.match.opp?"Match vs "+D.match.opp+" – ":""}${D.match.date}\n\n`;
- D.players.forEach(p=>{const s=S(p.id);t+=`${p.num?"#"+p.num+" ":""}${p.name} : ${pts(s)} pts, ${s.reb} reb, ${s.pas} passes, ${s.ctr} ctr, ${s.def} déf, ${s.per} pertes, ${s.fau} F, LF ${s.lfR}/${s.lfR+s.lfM}, ${fmt(ptime(p.id))} min${played(p.id)?", note "+note(s)+"/100":""}\n`});return t}
+ D.players.forEach(p=>{const s=S(p.id);t+=`${p.num?"#"+p.num+" ":""}${p.name} : ${pts(s)} pts, ${s.reb} reb, ${s.pas} passes, ${s.ctr} ctr, ${s.def} déf, ${s.per} pertes, ${s.fau} F, tirs ${fgM(s)}/${fgA(s)} (${pct(fgM(s),fgA(s))}), LF ${s.lfR}/${s.lfR+s.lfM}, ${fmt(ptime(p.id))} min${played(p.id)?", note "+note(s)+"/100":""}\n`});return t}
 function shareStats(){const t=statsText();if(window.Android&&Android.share){Android.share(t)}else if(navigator.share){navigator.share({text:t}).catch(()=>{})}else{try{navigator.clipboard.writeText(t);toast("Bilan copié")}catch(e){alert(t)}}}
 function newMatch(){if(D.dirty&&!confirm("⚠️ Les stats de ce match n'ont pas été enregistrées. Elles seront perdues. Continuer ?"))return;if(!confirm("Commencer un nouveau match ? Les stats et temps de jeu seront remis à zéro (les joueurs et l'historique sont conservés)."))return;D.dirty=false;D.curHist=null;D.ended=false;D.stats={};D.time={};D.onCourt={};D.log=[];D.clock={run:false,start:0,el:0};D.match={name:"",opp:"",date:new Date().toISOString().slice(0,10)};save();toast("Nouveau match prêt");render()}
 
@@ -253,7 +259,7 @@ function vDonnees(){
  <div class="row"><button class="b" onclick="showPin('set1')">${D.pinHash?"Changer le PIN":"Définir un PIN"}</button>${D.pinHash?`<button class="b sec" onclick="remPin()">Retirer le PIN</button>`:""}</div></div>
  <div class="card"><h2>📦 Mes données (droit d'accès)</h2><p class="mut">Exporte toutes les données dans un fichier texte que tu peux garder.</p><button class="b sec" style="width:100%" onclick="exportData()">📤 Exporter mes données</button></div>
  <div class="card"><h2>🗑️ Droit à l'effacement</h2><p class="mut">Supprime définitivement tous les joueurs, stats et réglages de ce téléphone.</p><button class="b red" style="width:100%" onclick="wipe()">Effacer toutes les données</button></div>
- <p class="mut" style="text-align:center">Stat Player : Basket · v1.13</p>`;
+ <p class="mut" style="text-align:center">Stat Player : Basket · v1.14</p>`;
 }
 function exportData(){const c={...D};delete c.pinHash;const t=JSON.stringify(c,null,2);if(window.Android&&Android.share)Android.share(t);else if(navigator.share)navigator.share({text:t}).catch(()=>{});else{try{navigator.clipboard.writeText(t);toast("Données copiées")}catch(e){alert(t)}}}
 function wipe(){if(!confirm("Effacer TOUTES les données ? Action irréversible."))return;if(!confirm("Confirmer l'effacement définitif ?"))return;try{localStorage.removeItem(dkey())}catch(e){}delete memS[dkey()];D=blank();unlocked=true;sel=null;tab="joueurs";render();toast("Données effacées","var(--rd)")}
@@ -279,7 +285,7 @@ async function pk(n){if(pinBuf.length>=4)return;pinBuf+=n;drawPin();if(pinBuf.le
 /* Verrouillage auto quand l'appli passe en arrière-plan */
 document.addEventListener("visibilitychange",()=>{if(!cur)return;if(document.hidden){stopSync();commitTimes();save();if(D.pinHash){unlocked=false}}else if(D.pinHash&&!unlocked)render()});
 /* ===== Enregistrement des stats par joueur ===== */
-const KS=["p2","p3","lfR","lfM","reb","ctr","pas","def","per","fau"];
+const KS=["p2","p2M","p3","p3M","lfR","lfM","reb","ctr","pas","def","per","fau"];
 const played=id=>KS.some(k=>S(id)[k]>0)||ptime(id)>0;
 function histOf(id){return D.history.filter(m=>m.players[id]).map(m=>({m,s:m.players[id]})).sort((a,b)=>a.m.date<b.m.date?1:-1)}
 function saveDlg(){
@@ -311,7 +317,7 @@ function vFiche(){
  <div class="card"><h2>📈 Moyennes par match</h2><div class="score">
  <div><b>${av(pts(T))}</b><span>Points</span></div><div><b>${av(T.reb)}</b><span>Rebonds</span></div><div><b>${av(T.pas)}</b><span>Passes</span></div><div><b>${fmt(n?T.min/n:0)}</b><span>Temps</span></div>
  <div><b>${av(T.ctr)}</b><span>Contres</span></div><div><b>${av(T.def)}</b><span>Déf. réussies</span></div><div><b>${av(T.per)}</b><span>Pertes</span></div><div><b>${av(T.fau)}</b><span>Fautes</span></div></div>
- <p class="mut" style="margin:10px 0 0">Lancers francs : <b style="color:var(--txt)">${T.lfR}/${lfT}</b> ${lfT?`(${Math.round(T.lfR*100/lfT)} %)`:""} · Total : <b style="color:var(--txt)">${pts(T)} pts</b>, ${T.reb} reb, ${T.pas} passes</p></div>
+ <p class="mut" style="margin:10px 0 0">Tirs : <b style="color:var(--txt)">${fgM(T)}/${fgA(T)}</b> (${pct(fgM(T),fgA(T))} réussis, ${pct(fgA(T)-fgM(T),fgA(T))} ratés) · 3 pts : <b style="color:var(--txt)">${z(T.p3)}/${z(T.p3)+z(T.p3M)}</b><br>Lancers francs : <b style="color:var(--txt)">${T.lfR}/${lfT}</b> ${lfT?`(${Math.round(T.lfR*100/lfT)} %)`:""} · Total : <b style="color:var(--txt)">${pts(T)} pts</b>, ${T.reb} reb, ${T.pas} passes</p></div>
  <div class="card"><h2>📅 Matchs enregistrés</h2>${n?`<div class="tw"><table><tr><th>Match</th><th>Min</th><th>Pts</th><th>LF</th><th>Reb</th><th>Ctr</th><th>Pas</th><th>Déf</th><th>Pdb</th><th>F</th><th>Note</th><th></th></tr>
  ${H.map(({m,s})=>`<tr><td>${esc(m.date.slice(8,10)+"/"+m.date.slice(5,7))}${m.opp?"<br><span class='mut'>"+esc(m.opp)+"</span>":""}</td><td>${fmt(s.min||0)}</td><td><b>${pts(s)}</b></td><td>${s.lfR}/${s.lfR+s.lfM}</td><td>${s.reb}</td><td>${s.ctr}</td><td>${s.pas}</td><td>${s.def}</td><td>${s.per}</td><td>${s.fau}</td><td>${nB(note(s))}</td><td><button class="ico" style="font-size:15px;padding:2px" onclick="delHist('${m.id}')">🗑️</button></td></tr>`).join("")}</table></div>`:`<p class="mut">Aucun match enregistré. Dans l'onglet <b>Stats</b>, touche « Enregistrer les stats des joueurs sélectionnés ».</p>`}</div>
  <div class="card"><h2>📝 Notes (${OB.length})</h2>${OB.length?OB.map(obHtml).join(""):`<p class="mut">Aucune note. Utilise l'onglet <b>Note</b>.</p>`}<button class="b sec" style="width:100%;margin-top:6px" onclick="sel='${fp}';tab='observer';render()">＋ Ajouter une note</button></div>
@@ -503,18 +509,18 @@ function exportAs(f){commitTimes();const m=exScope!=="season",se=exScope!=="matc
   if(se&&R.length){t+=`\n📊 Moyennes par match (saison)\n`;R.forEach(({p,n,T,nm})=>{const l=T.lfR+T.lfM;t+=`${p.name} (${n} MJ) : ${av1(pts(T),n)} pts, ${av1(T.reb,n)} reb, ${av1(T.pas,n)} passes, ${av1(T.ctr,n)} ctr, ${av1(T.def,n)} déf, ${av1(T.per,n)} pertes, ${av1(T.fau,n)} F, LF ${l?Math.round(T.lfR*100/l)+" %":"–"}, note ${nm}/100\n`})}
   if(window.Android&&Android.share)Android.share(t);else if(navigator.share)navigator.share({text:t}).catch(()=>{});else{try{navigator.clipboard.writeText(t);toast("Copié")}catch(e){alert(t)}}return render()}
  if(f==="csv"){const q=v=>{v=String(v??"");return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v},L=[],row=a=>L.push(a.map(q).join(";"));
-  if(m){row(["Match",D.match.opp?"vs "+D.match.opp:"",D.match.date]);row(["Joueur","N°","Temps de jeu","Points","Paniers 2 pts","Paniers 3 pts","LF réussis","LF tentés","Rebonds","Contres","Passes","Défenses réussies","Pertes de balle","Fautes","Évaluation","Note /100"]);
-   D.players.forEach(p=>{const s=S(p.id);row([p.name,p.num||"",fmt(ptime(p.id)),pts(s),s.p2,s.p3,s.lfR,s.lfR+s.lfM,s.reb,s.ctr,s.pas,s.def,s.per,s.fau,ev(s),played(p.id)?note(s):""])});L.push("")}
-  if(se&&R.length){row(["Moyennes par match (saison)"]);row(["Joueur","N°","Matchs joués","Temps moyen","Points","Rebonds","Passes","Contres","Défenses réussies","Pertes de balle","Fautes","LF %","Note moyenne /100"]);
-   R.forEach(({p,n,T,nm})=>{const l=T.lfR+T.lfM;row([p.name,p.num||"",n,fmt(T.min/n),av1(pts(T),n),av1(T.reb,n),av1(T.pas,n),av1(T.ctr,n),av1(T.def,n),av1(T.per,n),av1(T.fau,n),l?Math.round(T.lfR*100/l):"",nm])});L.push("");
-   row(["Historique des matchs enregistrés"]);row(["Date","Adversaire","Joueur","Temps de jeu","Points","LF réussis","LF tentés","Rebonds","Contres","Passes","Défenses réussies","Pertes de balle","Fautes","Note /100"]);
-   [...D.history].sort((a,b)=>a.date<b.date?-1:1).forEach(h=>Object.entries(h.players).forEach(([id,s])=>{const p=D.players.find(x=>x.id===id);if(p)row([h.date,h.opp||"",p.name,fmt(s.min||0),pts(s),s.lfR,s.lfR+s.lfM,s.reb,s.ctr,s.pas,s.def,s.per,s.fau,note(s)])}))}
+  if(m){row(["Match",D.match.opp?"vs "+D.match.opp:"",D.match.date]);row(["Joueur","N°","Temps de jeu","Points","Tirs 2 pts réussis","Tirs 2 pts ratés","Tirs 3 pts réussis","Tirs 3 pts ratés","Tirs réussis","Tirs tentés","% tirs réussis","% tirs ratés","LF réussis","LF tentés","Rebonds","Contres","Passes","Défenses réussies","Pertes de balle","Fautes","Évaluation","Note /100"]);
+   D.players.forEach(p=>{const s=S(p.id);row([p.name,p.num||"",fmt(ptime(p.id)),pts(s),s.p2,s.p2M,s.p3,s.p3M,fgM(s),fgA(s),fgA(s)?Math.round(fgM(s)*100/fgA(s)):"",fgA(s)?Math.round((fgA(s)-fgM(s))*100/fgA(s)):"",s.lfR,s.lfR+s.lfM,s.reb,s.ctr,s.pas,s.def,s.per,s.fau,ev(s),played(p.id)?note(s):""])});L.push("")}
+  if(se&&R.length){row(["Moyennes par match (saison)"]);row(["Joueur","N°","Matchs joués","Temps moyen","Points","% tirs réussis","Rebonds","Passes","Contres","Défenses réussies","Pertes de balle","Fautes","LF %","Note moyenne /100"]);
+   R.forEach(({p,n,T,nm})=>{const l=T.lfR+T.lfM;row([p.name,p.num||"",n,fmt(T.min/n),av1(pts(T),n),fgA(T)?Math.round(fgM(T)*100/fgA(T)):"",av1(T.reb,n),av1(T.pas,n),av1(T.ctr,n),av1(T.def,n),av1(T.per,n),av1(T.fau,n),l?Math.round(T.lfR*100/l):"",nm])});L.push("");
+   row(["Historique des matchs enregistrés"]);row(["Date","Adversaire","Joueur","Temps de jeu","Points","Tirs réussis","Tirs tentés","LF réussis","LF tentés","Rebonds","Contres","Passes","Défenses réussies","Pertes de balle","Fautes","Note /100"]);
+   [...D.history].sort((a,b)=>a.date<b.date?-1:1).forEach(h=>Object.entries(h.players).forEach(([id,s])=>{const p=D.players.find(x=>x.id===id);if(p)row([h.date,h.opp||"",p.name,fmt(s.min||0),pts(s),fgM(s),fgA(s),z(s.lfR),s.lfR+s.lfM,s.reb,s.ctr,s.pas,s.def,s.per,s.fau,note(s)])}))}
   sendFile(exName("csv"),"﻿"+L.join("\r\n"),"text/csv");return render()}
  if(f==="pdf"){const th=a=>`<tr>${a.map(x=>`<th>${x}</th>`).join("")}</tr>`,tr=a=>`<tr>${a.map(x=>`<td>${x}</td>`).join("")}</tr>`;let b="";
-  if(m){b+=`<h2>Match ${D.match.opp?"vs "+esc(D.match.opp):""} – ${esc(D.match.date)}</h2><p>Score équipe : <b>${D.players.reduce((a,x)=>a+pts(S(x.id)),0)} pts</b></p><table>${th(["Joueur","Min","Pts","LF","Reb","Ctr","Pas","Déf","Pdb","F","Éval","Note"])}${D.players.map(p=>{const s=S(p.id);return tr([(p.num?"#"+esc(p.num)+" ":"")+esc(p.name),fmt(ptime(p.id)),"<b>"+pts(s)+"</b>",s.lfR+"/"+(s.lfR+s.lfM),s.reb,s.ctr,s.pas,s.def,s.per,s.fau,ev(s),played(p.id)?"<b>"+note(s)+"</b>":"–"])}).join("")}</table>`}
+  if(m){b+=`<h2>Match ${D.match.opp?"vs "+esc(D.match.opp):""} – ${esc(D.match.date)}</h2><p>Score équipe : <b>${D.players.reduce((a,x)=>a+pts(S(x.id)),0)} pts</b></p><table>${th(["Joueur","Min","Pts","Tirs","% réussi","% raté","LF","Reb","Ctr","Pas","Déf","Pdb","F","Éval","Note"])}${D.players.map(p=>{const s=S(p.id);return tr([(p.num?"#"+esc(p.num)+" ":"")+esc(p.name),fmt(ptime(p.id)),"<b>"+pts(s)+"</b>",fgM(s)+"/"+fgA(s),pct(fgM(s),fgA(s)),pct(fgA(s)-fgM(s),fgA(s)),s.lfR+"/"+(s.lfR+s.lfM),s.reb,s.ctr,s.pas,s.def,s.per,s.fau,ev(s),played(p.id)?"<b>"+note(s)+"</b>":"–"])}).join("")}</table>`}
   if(se&&R.length){b+=`<h2>Moyennes par match – saison</h2><table>${th(["Joueur","MJ","Min","Pts","Reb","Pas","Ctr","Déf","Pdb","F","LF %","Note moy."])}${R.map(({p,n,T,nm})=>{const l=T.lfR+T.lfM;return tr([esc(p.name),n,fmt(T.min/n),"<b>"+av1(pts(T),n)+"</b>",av1(T.reb,n),av1(T.pas,n),av1(T.ctr,n),av1(T.def,n),av1(T.per,n),av1(T.fau,n),l?Math.round(T.lfR*100/l)+" %":"–","<b>"+nm+"</b>"])}).join("")}</table>`}
   if(!b)return toast("Rien à exporter","var(--yl)");
-  const html=`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Stat Player – ${esc(D.match.date)}</title><style>body{font-family:Arial,sans-serif;color:#111;margin:24px;font-size:12px}h1{color:#ea580c;margin:0 0 4px;font-size:22px}h2{font-size:15px;margin:22px 0 6px;color:#0f172a;border-bottom:2px solid #f97316;padding-bottom:3px}table{width:100%;border-collapse:collapse}th{background:#0f172a;color:#fff;font-size:10px;padding:5px 3px}td{padding:5px 3px;border-bottom:1px solid #ddd;text-align:center}td:first-child,th:first-child{text-align:left}tr:nth-child(even) td{background:#f8fafc}.f{margin-top:24px;color:#666;font-size:9px}</style></head><body><h1>🏀 Stat Player : Basket</h1><div>Rapport du ${new Date().toLocaleDateString("fr-FR")}</div>${b}<p class="f">Pdb = pertes de balle · MJ = matchs joués · Éval = pts + reb + passes + contres + déf. réussies − pertes − fautes − LF ratés · Note /100 = 40 + 4 × Éval</p></body></html>`;
+  const html=`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Stat Player – ${esc(D.match.date)}</title><style>body{font-family:Arial,sans-serif;color:#111;margin:24px;font-size:12px}h1{color:#ea580c;margin:0 0 4px;font-size:22px}h2{font-size:15px;margin:22px 0 6px;color:#0f172a;border-bottom:2px solid #f97316;padding-bottom:3px}table{width:100%;border-collapse:collapse}th{background:#0f172a;color:#fff;font-size:10px;padding:5px 3px}td{padding:5px 3px;border-bottom:1px solid #ddd;text-align:center}td:first-child,th:first-child{text-align:left}tr:nth-child(even) td{background:#f8fafc}.f{margin-top:24px;color:#666;font-size:9px}</style></head><body><h1>🏀 Stat Player : Basket</h1><div>Rapport du ${new Date().toLocaleDateString("fr-FR")}</div>${b}<p class="f">Pdb = pertes de balle · MJ = matchs joués · Tirs = réussis/tentés (2 et 3 pts) · Éval = pts + reb + passes + contres + déf. réussies − pertes − fautes − tirs ratés − LF ratés · Note /100 = 40 + 4 × Éval</p></body></html>`;
   if(window.AndroidPrint){AndroidPrint.print(html,"StatPlayer-"+D.match.date);toast("Choisis « Enregistrer au format PDF »");return render()}
   const fr=document.createElement("iframe");fr.style.cssText="position:fixed;width:0;height:0;border:0;right:0;bottom:0";document.body.appendChild(fr);fr.contentDocument.open();fr.contentDocument.write(html);fr.contentDocument.close();
   setTimeout(()=>{try{fr.contentWindow.focus();fr.contentWindow.print()}catch(e){sendFile(exName("html"),html,"text/html")}setTimeout(()=>fr.remove(),60000)},400);toast("Imprimante : choisis « Enregistrer en PDF »");return render()}
@@ -581,6 +587,26 @@ async function applySync(s){let o;try{const u=ub64(s),body=new Uint8Array(await 
  ${c.u?`<p class="mut" style="margin-top:0">${c.u} feuille(s) de joueur complétée(s) dans des matchs existants.</p>`:""}
  <p>👉 Maintenant, montre <b>ton</b> QR code à l'autre téléphone pour qu'il reçoive aussi tes données.</p>
  <button class="b" style="width:100%;margin-bottom:8px" onclick="showQR()">📱 Montrer mon QR code</button><button class="b sec" style="width:100%" onclick="closeSync()">Terminé</button>`)}
+
+/* ===== Sous-menu tir réussi / raté ===== */
+function shotMenu(k){const t=ST.find(x=>x.k===k);ov(`<h2>🏀 Tir à ${t.pts} points</h2>
+ <div class="row" style="margin-bottom:10px"><button class="st" style="background:#16a34a;min-height:90px;font-size:18px" onclick="arm='${k}';render()">✅<br>Tir réussi<small>+${t.pts} pts</small></button>
+ <button class="st" style="background:#dc2626;min-height:90px;font-size:18px" onclick="arm='${k}M';render()">❌<br>Tir raté<small>0 pt</small></button></div>
+ <button class="b sec" style="width:100%" onclick="render()">Annuler</button>`)}
+
+/* ===== Personnaliser les boutons de stats ===== */
+const SW=["#f97316","#ea580c","#ef4444","#b91c1c","#ec4899","#a855f7","#6366f1","#3b82f6","#0891b2","#0d9488","#22c55e","#15803d","#ca8a04","#64748b"];
+let custSel=null;
+function custDlg(){if(!D.ui)D.ui={};const L=stOrder();
+ ov(`<h2>🎨 Personnaliser les stats</h2><p class="mut" style="margin-top:0">Change l'ordre avec ▲ ▼ et touche la pastille pour choisir une couleur.</p>
+ ${L.map((t,i)=>`<div class="pl" style="padding:8px;flex-wrap:wrap"><span style="width:34px;height:34px;border-radius:10px;background:${stCol(t)};flex:none;border:2px solid ${custSel===t.k?"#fff":"transparent"}" onclick="custSel=custSel==='${t.k}'?null:'${t.k}';custDlg()"></span>
+  <div class="nm">${t.l}<div class="mut">${t.s||"&nbsp;"}</div></div>
+  <button class="ico" style="opacity:${i?1:.25}" onclick="custMove('${t.k}',-1)">▲</button><button class="ico" style="opacity:${i<L.length-1?1:.25}" onclick="custMove('${t.k}',1)">▼</button>
+  ${custSel===t.k?`<div style="flex-basis:100%;display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">${SW.map(c=>`<span onclick="custCol('${t.k}','${c}')" style="width:32px;height:32px;border-radius:50%;background:${c};border:3px solid ${stCol(t)===c?"#fff":"transparent"}"></span>`).join("")}
+   <label style="width:32px;height:32px;border-radius:50%;background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);position:relative;overflow:hidden"><input type="color" value="${stCol(t)}" onchange="custCol('${t.k}',this.value)" style="opacity:0;position:absolute;inset:0;width:100%;height:100%;padding:0;min-height:0"></label></div>`:""}</div>`).join("")}
+ <div class="row" style="margin-top:6px"><button class="b sec" onclick="if(confirm('Revenir aux couleurs et à l\\'ordre d\\'origine ?')){D.ui={};custSel=null;save();custDlg()}">↺ Par défaut</button><button class="b" onclick="custSel=null;render()">Terminé</button></div>`)}
+function custMove(k,d){const o=stOrder().map(t=>t.k),i=o.indexOf(k),j=i+d;if(j<0||j>=o.length)return;[o[i],o[j]]=[o[j],o[i]];D.ui.order=o;save();custDlg()}
+function custCol(k,c){D.ui.col=D.ui.col||{};D.ui.col[k]=c;save();custDlg()}
 
 if(A.last==="guest")openSpace("guest");else render();
 if(!NATIVE&&location.protocol.startsWith("http")){
