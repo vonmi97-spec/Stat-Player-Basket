@@ -114,11 +114,11 @@ async function hash(s){try{const b=await crypto.subtle.digest("SHA-256",new Text
 const S=id=>D.stats[id]||(D.stats[id]={p2:0,p3:0,lfR:0,lfM:0,reb:0,ctr:0,pas:0,def:0,per:0,fau:0});
 const pts=s=>s.p2*2+s.p3*3+s.lfR;
 const ev=s=>pts(s)+s.reb+s.pas+s.ctr+s.def-s.per-s.fau-s.lfM;
-/* Note générale /10 : 4 de base + 0,4 par point d'évaluation (bornée 0–10) */
-const note=s=>Math.max(0,Math.min(10,Math.round((4+0.4*ev(s))*10)/10));
-const nCol=n=>n>=8?"#16a34a":n>=6.5?"#0d9488":n>=5?"#ca8a04":"#dc2626";
-const nLab=n=>n>=8?"Excellent":n>=6.5?"Bon match":n>=5?"Correct":"À améliorer";
-const nB=n=>n==null?"–":`<span class="nt" style="background:${nCol(n)}">${String(n).replace(".",",")}</span>`;
+/* Note générale /100 : 40 de base + 4 par point d'évaluation (bornée 0–100) */
+const note=s=>Math.max(0,Math.min(100,Math.round(40+4*ev(s))));
+const nCol=n=>n>=80?"#16a34a":n>=65?"#0d9488":n>=50?"#ca8a04":"#dc2626";
+const nLab=n=>n>=80?"Excellent":n>=65?"Bon match":n>=50?"Correct":"À améliorer";
+const nB=n=>n==null?"–":`<span class="nt" style="background:${nCol(n)}">${n}</span>`;
 const fmt=ms=>{const t=Math.floor(ms/1000);return String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStart(2,"0")};
 const clockEl=()=>D.clock.el+(D.clock.run?Date.now()-D.clock.start:0);
 function ptime(id){const t=D.time[id]||0;return t+(D.clock.run&&D.onCourt[id]?Date.now()-D.clock.start:0)}
@@ -200,13 +200,13 @@ function vStats(){
  ${rows.length?`<div class="card"><h2>🏆 Meilleurs</h2><p style="margin:0">Marqueur : <b>${esc(tp.p.name)}</b> (${pts(tp.s)} pts)<br>Rebondeur : <b>${esc(tr.p.name)}</b> (${tr.s.reb})<br>Passeur : <b>${esc(ta.p.name)}</b> (${ta.s.pas})</p></div>`:""}
  <div class="card"><h2>Feuille de stats</h2><div class="tw"><table><tr><th>Joueur</th><th>Min</th><th>Pts</th><th>LF</th><th>Reb</th><th>Ctr</th><th>Pas</th><th>Déf</th><th>Pdb</th><th>F</th><th>Éval</th><th>Note</th></tr>
  ${rows.map(({p,s})=>`<tr><td>${p.num?"#"+esc(p.num)+" ":""}${esc(p.name)}</td><td>${fmt(ptime(p.id))}</td><td><b>${pts(s)}</b></td><td>${s.lfR}/${s.lfR+s.lfM}</td><td>${s.reb}</td><td>${s.ctr}</td><td>${s.pas}</td><td>${s.def}</td><td>${s.per}</td><td>${s.fau}</td><td>${ev(s)}</td><td>${played(p.id)?nB(note(s)):"–"}</td></tr>`).join("")}</table></div>
- <p class="mut" style="margin:8px 0 0">Pdb = pertes de balle · Éval = pts + reb + passes + contres + déf. réussies − pertes − fautes − LF ratés<br>Note /10 = 4 + 0,4 × Éval · 🟢 8+ excellent · 🔵 6,5+ bon · 🟡 5+ correct · 🔴 à améliorer</p></div>
+ <p class="mut" style="margin:8px 0 0">Pdb = pertes de balle · Éval = pts + reb + passes + contres + déf. réussies − pertes − fautes − LF ratés<br>Note /100 = 40 + 4 × Éval · 🟢 80+ excellent · 🔵 65+ bon · 🟡 50+ correct · 🔴 à améliorer</p></div>
  ${seasonCard()}
  <button class="b gr" style="width:100%;margin-bottom:8px" onclick="saveDlg()">💾 Enregistrer les stats des joueurs sélectionnés</button>${D.curHist?`<p class="mut" style="margin:0 0 8px;text-align:center">✅ Match enregistré — un nouvel enregistrement le met à jour</p>`:""}
  <div class="row"><button class="b" onclick="shareStats()">📤 Partager le bilan</button><button class="b red" onclick="newMatch()">🆕 Nouveau match</button></div>`;
 }
 function statsText(){let t=`🏀 Stat Player : Basket\n${D.match.opp?"Match vs "+D.match.opp+" – ":""}${D.match.date}\n\n`;
- D.players.forEach(p=>{const s=S(p.id);t+=`${p.num?"#"+p.num+" ":""}${p.name} : ${pts(s)} pts, ${s.reb} reb, ${s.pas} passes, ${s.ctr} ctr, ${s.def} déf, ${s.per} pertes, ${s.fau} F, LF ${s.lfR}/${s.lfR+s.lfM}, ${fmt(ptime(p.id))} min${played(p.id)?", note "+note(s)+"/10":""}\n`});return t}
+ D.players.forEach(p=>{const s=S(p.id);t+=`${p.num?"#"+p.num+" ":""}${p.name} : ${pts(s)} pts, ${s.reb} reb, ${s.pas} passes, ${s.ctr} ctr, ${s.def} déf, ${s.per} pertes, ${s.fau} F, LF ${s.lfR}/${s.lfR+s.lfM}, ${fmt(ptime(p.id))} min${played(p.id)?", note "+note(s)+"/100":""}\n`});return t}
 function shareStats(){const t=statsText();if(window.Android&&Android.share){Android.share(t)}else if(navigator.share){navigator.share({text:t}).catch(()=>{})}else{try{navigator.clipboard.writeText(t);toast("Bilan copié")}catch(e){alert(t)}}}
 function newMatch(){if(D.dirty&&!confirm("⚠️ Les stats de ce match n'ont pas été enregistrées. Elles seront perdues. Continuer ?"))return;if(!confirm("Commencer un nouveau match ? Les stats et temps de jeu seront remis à zéro (les joueurs et l'historique sont conservés)."))return;D.dirty=false;D.curHist=null;D.stats={};D.time={};D.onCourt={};D.log=[];D.clock={run:false,start:0,el:0};D.match={name:"",opp:"",date:new Date().toISOString().slice(0,10)};save();toast("Nouveau match prêt");render()}
 
@@ -225,7 +225,7 @@ function vDonnees(){
  <div class="row"><button class="b" onclick="showPin('set1')">${D.pinHash?"Changer le PIN":"Définir un PIN"}</button>${D.pinHash?`<button class="b sec" onclick="remPin()">Retirer le PIN</button>`:""}</div></div>
  <div class="card"><h2>📦 Mes données (droit d'accès)</h2><p class="mut">Exporte toutes les données dans un fichier texte que tu peux garder.</p><button class="b sec" style="width:100%" onclick="exportData()">📤 Exporter mes données</button></div>
  <div class="card"><h2>🗑️ Droit à l'effacement</h2><p class="mut">Supprime définitivement tous les joueurs, stats et réglages de ce téléphone.</p><button class="b red" style="width:100%" onclick="wipe()">Effacer toutes les données</button></div>
- <p class="mut" style="text-align:center">Stat Player : Basket · v1.3</p>`;
+ <p class="mut" style="text-align:center">Stat Player : Basket · v1.4</p>`;
 }
 function exportData(){const c={...D};delete c.pinHash;const t=JSON.stringify(c,null,2);if(window.Android&&Android.share)Android.share(t);else if(navigator.share)navigator.share({text:t}).catch(()=>{});else{try{navigator.clipboard.writeText(t);toast("Données copiées")}catch(e){alert(t)}}}
 function wipe(){if(!confirm("Effacer TOUTES les données ? Action irréversible."))return;if(!confirm("Confirmer l'effacement définitif ?"))return;try{localStorage.removeItem(KEY)}catch(e){}mem=null;D=blank();unlocked=true;sel=null;tab="joueurs";render();toast("Données effacées","var(--rd)")}
@@ -269,7 +269,7 @@ function doSave(){
  let m=D.curHist&&D.history.find(x=>x.id===D.curHist);
  if(!m){m={id:"m"+Date.now().toString(36),players:{}};D.history.push(m);D.curHist=m.id}
  m.date=D.match.date;m.opp=D.match.opp;
- ids.forEach(id=>{m.players[id]={...S(id),min:ptime(id),note:note(S(id))}});
+ ids.forEach(id=>{m.players[id]={...S(id),min:ptime(id),note100:note(S(id))}});
  D.dirty=false;save();showNotes(ids);
 }
 function openFiche(id){fp=id;tab="fiche";render()}
@@ -279,24 +279,24 @@ function vFiche(){
  H.forEach(({s})=>{KS.forEach(k=>T[k]+=s[k]||0);T.min+=s.min||0});
  const av=v=>n?(v/n).toFixed(1).replace(".0",""):"0",lfT=T.lfR+T.lfM,nm=avgNote(fp),OB=D.obs.filter(o=>o.pid===fp).sort((a,b)=>b.ts-a.ts);
  $("#app").innerHTML=`<button class="b sec" style="margin-bottom:12px" onclick="tab='joueurs';render()">‹ Joueurs</button>
- <div class="card"><div class="row" style="gap:12px"><div class="num" style="width:56px;height:56px;font-size:22px;flex:none">${esc(p.num||"–")}</div><div><h2 style="margin:0;font-size:20px">${esc(p.name)}</h2><div class="mut">${n} match${n>1?"s":""} enregistré${n>1?"s":""}</div></div>${nm!=null?`<div style="text-align:center;flex:none"><div class="nt" style="background:${nCol(nm)};font-size:22px;padding:6px 10px">${String(nm).replace(".",",")}</div><div class="mut" style="font-size:11px;margin-top:3px">Note moy. /10</div></div>`:""}</div></div>
+ <div class="card"><div class="row" style="gap:12px"><div class="num" style="width:56px;height:56px;font-size:22px;flex:none">${esc(p.num||"–")}</div><div><h2 style="margin:0;font-size:20px">${esc(p.name)}</h2><div class="mut">${n} match${n>1?"s":""} enregistré${n>1?"s":""}</div></div>${nm!=null?`<div style="text-align:center;flex:none"><div class="nt" style="background:${nCol(nm)};font-size:22px;padding:6px 10px">${nm}</div><div class="mut" style="font-size:11px;margin-top:3px">Note moy. /100</div></div>`:""}</div></div>
  <div class="card"><h2>📈 Moyennes par match</h2><div class="score">
  <div><b>${av(pts(T))}</b><span>Points</span></div><div><b>${av(T.reb)}</b><span>Rebonds</span></div><div><b>${av(T.pas)}</b><span>Passes</span></div><div><b>${fmt(n?T.min/n:0)}</b><span>Temps</span></div>
  <div><b>${av(T.ctr)}</b><span>Contres</span></div><div><b>${av(T.def)}</b><span>Déf. réussies</span></div><div><b>${av(T.per)}</b><span>Pertes</span></div><div><b>${av(T.fau)}</b><span>Fautes</span></div></div>
  <p class="mut" style="margin:10px 0 0">Lancers francs : <b style="color:var(--txt)">${T.lfR}/${lfT}</b> ${lfT?`(${Math.round(T.lfR*100/lfT)} %)`:""} · Total : <b style="color:var(--txt)">${pts(T)} pts</b>, ${T.reb} reb, ${T.pas} passes</p></div>
  <div class="card"><h2>📅 Matchs enregistrés</h2>${n?`<div class="tw"><table><tr><th>Match</th><th>Min</th><th>Pts</th><th>LF</th><th>Reb</th><th>Ctr</th><th>Pas</th><th>Déf</th><th>Pdb</th><th>F</th><th>Note</th><th></th></tr>
- ${H.map(({m,s})=>`<tr><td>${esc(m.date.slice(8,10)+"/"+m.date.slice(5,7))}${m.opp?"<br><span class='mut'>"+esc(m.opp)+"</span>":""}</td><td>${fmt(s.min||0)}</td><td><b>${pts(s)}</b></td><td>${s.lfR}/${s.lfR+s.lfM}</td><td>${s.reb}</td><td>${s.ctr}</td><td>${s.pas}</td><td>${s.def}</td><td>${s.per}</td><td>${s.fau}</td><td>${nB(s.note!=null?s.note:note(s))}</td><td><button class="ico" style="font-size:15px;padding:2px" onclick="delHist('${m.id}')">🗑️</button></td></tr>`).join("")}</table></div>`:`<p class="mut">Aucun match enregistré. Dans l'onglet <b>Stats</b>, touche « Enregistrer les stats des joueurs sélectionnés ».</p>`}</div>
+ ${H.map(({m,s})=>`<tr><td>${esc(m.date.slice(8,10)+"/"+m.date.slice(5,7))}${m.opp?"<br><span class='mut'>"+esc(m.opp)+"</span>":""}</td><td>${fmt(s.min||0)}</td><td><b>${pts(s)}</b></td><td>${s.lfR}/${s.lfR+s.lfM}</td><td>${s.reb}</td><td>${s.ctr}</td><td>${s.pas}</td><td>${s.def}</td><td>${s.per}</td><td>${s.fau}</td><td>${nB(note(s))}</td><td><button class="ico" style="font-size:15px;padding:2px" onclick="delHist('${m.id}')">🗑️</button></td></tr>`).join("")}</table></div>`:`<p class="mut">Aucun match enregistré. Dans l'onglet <b>Stats</b>, touche « Enregistrer les stats des joueurs sélectionnés ».</p>`}</div>
  <div class="card"><h2>📝 Observations (${OB.length})</h2>${OB.length?OB.map(obHtml).join(""):`<p class="mut">Aucune observation. Utilise l'onglet <b>Observer</b>.</p>`}<button class="b sec" style="width:100%;margin-top:6px" onclick="sel='${fp}';tab='observer';render()">＋ Ajouter une observation</button></div>
  ${n||OB.length?`<button class="b" style="width:100%" onclick="shareFiche()">📤 Partager la fiche</button>`:""}`;
 }
 function delHist(mid){if(!confirm("Retirer ce match de la fiche du joueur ?"))return;const m=D.history.find(x=>x.id===mid);if(m){delete m.players[fp];if(!Object.keys(m.players).length){D.history=D.history.filter(x=>x!==m);if(D.curHist===mid)D.curHist=null}}save();vFiche()}
 function shareFiche(){const p=D.players.find(x=>x.id===fp),H=histOf(fp);let t=`🏀 Fiche de ${p.name}${p.num?" (#"+p.num+")":""} – ${H.length} match(s)\n\n`;
- H.forEach(({m,s})=>{t+=`${m.date}${m.opp?" vs "+m.opp:""} : ${pts(s)} pts, ${s.reb} reb, ${s.pas} passes, ${s.ctr} ctr, ${s.def} déf, ${s.per} pertes, ${s.fau} F, LF ${s.lfR}/${s.lfR+s.lfM}, ${fmt(s.min||0)}, note ${s.note!=null?s.note:note(s)}/10\n`});
- const nm=avgNote(fp);if(nm!=null)t+=`\nNote moyenne : ${nm}/10\n`;
+ H.forEach(({m,s})=>{t+=`${m.date}${m.opp?" vs "+m.opp:""} : ${pts(s)} pts, ${s.reb} reb, ${s.pas} passes, ${s.ctr} ctr, ${s.def} déf, ${s.per} pertes, ${s.fau} F, LF ${s.lfR}/${s.lfR+s.lfM}, ${fmt(s.min||0)}, note ${note(s)}/100\n`});
+ const nm=avgNote(fp);if(nm!=null)t+=`\nNote moyenne : ${nm}/100\n`;
  const OB=D.obs.filter(o=>o.pid===fp).sort((a,b)=>b.ts-a.ts);if(OB.length){t+=`\n📝 Observations :\n`;OB.forEach(o=>{t+=`- [${o.cat}] ${o.date}${o.opp?" vs "+o.opp:""} : ${o.txt}\n`})}
  if(window.Android&&Android.share)Android.share(t);else if(navigator.share)navigator.share({text:t}).catch(()=>{});else{try{navigator.clipboard.writeText(t);toast("Fiche copiée")}catch(e){alert(t)}}}
 
-function avgNote(id){const H=histOf(id);if(!H.length)return null;return Math.round(H.reduce((a,{s})=>a+(s.note!=null?s.note:note(s)),0)/H.length*10)/10}
+function avgNote(id){const H=histOf(id);if(!H.length)return null;return Math.round(H.reduce((a,{s})=>a+note(s),0)/H.length)}
 function showNotes(ids){const o=$("#ov");o.classList.remove("hid");
  o.innerHTML=`<div class="card"><h2>⭐ Notes du match</h2><p class="mut" style="margin-top:0">Stats enregistrées pour ${ids.length} joueur${ids.length>1?"s":""}.</p>
  ${ids.map(id=>{const p=D.players.find(x=>x.id===id),s=S(id),n=note(s);return`<div class="pl"><div class="num">${esc(p.num||"–")}</div><div class="nm">${esc(p.name)}<div class="mut">${nLab(n)} · ${pts(s)} pts · éval ${ev(s)}</div></div>${nB(n)}</div>`}).join("")}
