@@ -2,24 +2,32 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Stat Player">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#0f172a">
 <title>Stat Player : Basket</title>
 <style>
 :root{--bg:#0f172a;--card:#1e293b;--line:#334155;--txt:#f1f5f9;--mut:#94a3b8;--or:#f97316;--gr:#22c55e;--rd:#ef4444;--bl:#3b82f6;--yl:#eab308;--pu:#a855f7}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;font-family:system-ui,-apple-system,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding-bottom:72px;user-select:none}
-header{position:sticky;top:0;z-index:5;background:#020617;padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:2px solid var(--or)}
+body{margin:0;font-family:system-ui,-apple-system,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding-bottom:calc(72px + env(safe-area-inset-bottom));user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none}
+input{-webkit-user-select:text;user-select:text}
+header{position:sticky;top:0;z-index:5;background:#020617;padding:calc(12px + env(safe-area-inset-top)) 16px 12px;display:flex;align-items:center;gap:10px;border-bottom:2px solid var(--or)}
 header h1{font-size:18px;margin:0;flex:1}header h1 span{color:var(--or)}
 .ico{background:none;border:0;color:var(--txt);font-size:20px;padding:4px 8px}
 main{padding:14px;max-width:720px;margin:auto}
 .card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px}
 h2{font-size:16px;margin:0 0 10px;color:var(--or)}
-input,select{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:#0b1222;color:var(--txt);font-size:16px}
+input,select{width:100%;-webkit-appearance:none;appearance:none;min-height:46px;padding:12px;border-radius:10px;border:1px solid var(--line);background:#0b1222;color:var(--txt);font-size:16px}
 .row{display:flex;gap:8px;align-items:center}.row>*{flex:1}
 button.b{border:0;border-radius:10px;padding:12px;font-size:15px;font-weight:600;color:#fff;background:var(--or)}
 button.sec{background:var(--line)}button.red{background:var(--rd)}button.gr{background:var(--gr)}
-nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#020617;border-top:1px solid var(--line);z-index:5}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;padding-bottom:env(safe-area-inset-bottom);background:#020617;border-top:1px solid var(--line);z-index:5}
 nav button{flex:1;background:none;border:0;color:var(--mut);padding:8px 0 10px;font-size:11px}
 nav button b{display:block;font-size:20px;margin-bottom:2px}nav button.on{color:var(--or)}
 .pl{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:#0b1222;margin-bottom:8px}
@@ -45,7 +53,7 @@ th{color:var(--mut);font-weight:600;font-size:11px}td:first-child,th:first-child
 #ov .card{max-width:460px;width:100%;max-height:90vh;overflow:auto}
 .pin{display:flex;justify-content:center;gap:12px;margin:14px 0}.pin i{width:16px;height:16px;border-radius:50%;border:2px solid var(--or)}.pin i.f{background:var(--or)}
 .kp{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.kp button{font-size:22px;padding:14px;border-radius:12px;border:0;background:var(--line);color:#fff}
-.toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--gr);color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;z-index:30;opacity:0;transition:.25s;pointer-events:none}
+.toast{position:fixed;bottom:calc(84px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--gr);color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;z-index:30;opacity:0;transition:.25s;pointer-events:none}
 .toast.s{opacity:1}
 .hid{display:none!important}
 p{line-height:1.45}
@@ -88,6 +96,8 @@ const ST=[
 ];
 const LAB={p2:"Panier 2 pts",p3:"Panier 3 pts",lfR:"Lancer franc réussi",lfM:"Lancer franc raté",reb:"Rebond",ctr:"Contre",pas:"Passe réalisée",def:"Défense réussie",per:"Perte de balle",fau:"Faute"};
 
+const NATIVE=!!window.Android, IOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+const STANDALONE=window.navigator.standalone===true||matchMedia("(display-mode: standalone)").matches;
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function toast(t,c){const e=$("#toast");e.textContent=t;e.style.background=c||"var(--gr)";e.classList.add("s");clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove("s"),1300)}
@@ -110,8 +120,9 @@ function render(){
 }
 
 /* ===== Joueurs ===== */
+function installHint(){return (IOS&&!STANDALONE)?`<div class="card" style="border:1px solid var(--or)"><h2>📲 Installer sur l'iPhone</h2><p style="margin:0">Dans Safari, touche <b>Partager</b> (carré avec flèche vers le haut) puis <b>« Sur l'écran d'accueil »</b>, puis <b>Ajouter</b>. L'appli s'ouvrira en plein écran, hors connexion, et tes données seront conservées.</p></div>`:""}
 function vJoueurs(){
- $("#app").innerHTML=`<div class="card"><h2>Ajouter un joueur</h2>
+ $("#app").innerHTML=installHint()+`<div class="card"><h2>Ajouter un joueur</h2>
  <div class="row"><input id="pn" placeholder="Nom du joueur" maxlength="40" style="flex:3"><input id="pnum" placeholder="N°" inputmode="numeric" maxlength="2" style="flex:1"></div>
  <button class="b" style="width:100%;margin-top:10px" onclick="addP()">＋ Ajouter</button></div>
  <div class="card"><h2>Effectif (${D.players.length})</h2>
@@ -188,16 +199,18 @@ function newMatch(){if(!confirm("Commencer un nouveau match ? Les stats et temps
 function vDonnees(){
  $("#app").innerHTML=`<div class="card"><h2>🛡️ Protection des données</h2>
  <p>• Toutes les données (noms, statistiques, temps de jeu) sont stockées <b>uniquement sur ce téléphone</b>.<br>
- • L'application <b>n'a pas accès à Internet</b> : aucune donnée n'est envoyée, partagée ou vendue.<br>
- • Aucune publicité, aucun compte, aucun traceur.<br>
+ ${NATIVE?`• L'application <b>n'a pas accès à Internet</b> : aucune donnée n'est envoyée, partagée ou vendue.<br>
  • La sauvegarde automatique Android est désactivée : les données ne partent pas dans le cloud.<br>
- • Les captures d'écran sont bloquées pour éviter les fuites.<br>
+ • Les captures d'écran sont bloquées pour éviter les fuites.<br>`:`• L'appli fonctionne <b>hors connexion</b> : les données ne sont jamais envoyées sur Internet, ni partagées, ni vendues.<br>
+ • Elles sont enregistrées dans le stockage privé de l'appli sur ton iPhone.<br>
+ • Supprimer l'appli de l'écran d'accueil efface aussi ses données.<br>`}
+ • Aucune publicité, aucun compte, aucun traceur.<br>
  • Si tu suis des <b>mineurs</b>, obtiens l'accord des parents avant d'enregistrer leur nom (RGPD). Tu peux utiliser un prénom ou un surnom.</p></div>
  <div class="card"><h2>🔒 Code PIN</h2><p class="mut">${D.pinHash?"Un code PIN protège l'accès à l'application.":"Aucun code PIN. Ajoute-en un pour protéger les données."}</p>
  <div class="row"><button class="b" onclick="showPin('set1')">${D.pinHash?"Changer le PIN":"Définir un PIN"}</button>${D.pinHash?`<button class="b sec" onclick="remPin()">Retirer le PIN</button>`:""}</div></div>
  <div class="card"><h2>📦 Mes données (droit d'accès)</h2><p class="mut">Exporte toutes les données dans un fichier texte que tu peux garder.</p><button class="b sec" style="width:100%" onclick="exportData()">📤 Exporter mes données</button></div>
  <div class="card"><h2>🗑️ Droit à l'effacement</h2><p class="mut">Supprime définitivement tous les joueurs, stats et réglages de ce téléphone.</p><button class="b red" style="width:100%" onclick="wipe()">Effacer toutes les données</button></div>
- <p class="mut" style="text-align:center">Stat Player : Basket · v1.0</p>`;
+ <p class="mut" style="text-align:center">Stat Player : Basket · v1.1</p>`;
 }
 function exportData(){const c={...D};delete c.pinHash;const t=JSON.stringify(c,null,2);if(window.Android&&Android.share)Android.share(t);else if(navigator.share)navigator.share({text:t}).catch(()=>{});else{try{navigator.clipboard.writeText(t);toast("Données copiées")}catch(e){alert(t)}}}
 function wipe(){if(!confirm("Effacer TOUTES les données ? Action irréversible."))return;if(!confirm("Confirmer l'effacement définitif ?"))return;try{localStorage.removeItem(KEY)}catch(e){}mem=null;D=blank();unlocked=true;sel=null;tab="joueurs";render();toast("Données effacées","var(--rd)")}
@@ -206,7 +219,7 @@ function lockNow(){if(!D.pinHash){tab="donnees";render();return toast("Définis 
 
 function showConsent(){const o=$("#ov");o.classList.remove("hid");o.innerHTML=`<div class="card"><h2 style="font-size:20px">🏀 Bienvenue dans Stat Player : Basket</h2>
  <h2>Protection de tes données</h2><p>Cette application enregistre le <b>nom des joueurs</b> et leurs <b>statistiques de match</b>.</p>
- <p>✅ Données stockées uniquement sur ce téléphone<br>✅ Aucun accès Internet, aucun envoi<br>✅ Aucune publicité ni traceur<br>✅ Export et effacement à tout moment (onglet Données)<br>✅ Code PIN possible</p>
+ <p>✅ Données stockées uniquement sur ce téléphone<br>✅ ${NATIVE?"Aucun accès Internet, aucun envoi":"Fonctionne hors connexion, aucun envoi"}<br>✅ Aucune publicité ni traceur<br>✅ Export et effacement à tout moment (onglet Données)<br>✅ Code PIN possible</p>
  <p class="mut">Pour des joueurs mineurs, assure-toi d'avoir l'accord des parents ou responsables.</p>
  <button class="b" style="width:100%" onclick="D.consent=true;save();render()">J'ai compris et j'accepte</button></div>`}
 
@@ -223,6 +236,10 @@ async function pk(n){if(pinBuf.length>=4)return;pinBuf+=n;drawPin();if(pinBuf.le
 /* Verrouillage auto quand l'appli passe en arrière-plan */
 document.addEventListener("visibilitychange",()=>{if(document.hidden){commitTimes();save();if(D.pinHash){unlocked=false}}else if(D.pinHash&&!unlocked)render()});
 render();
+if(!NATIVE&&location.protocol.startsWith("http")){
+ if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+ try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+}
 </script>
 </body>
 </html>
