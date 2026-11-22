@@ -11,12 +11,25 @@ concurrency: { group: pages, cancel-in-progress: true }
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: { name: github-pages, url: '${{ steps.d.outputs.page_url }}' }
+    environment: { name: github-pages, url: 'https://vonmi97-spec.github.io/Stat-Player-Basket/' }
     steps:
       - uses: actions/checkout@v4
       - run: mkdir _site && cp app/src/main/assets/* web/* _site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with: { path: _site }
-      - id: d
+      # GitHub Pages échoue parfois de façon passagère : jusqu'à 3 tentatives
+      - id: d1
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+      - if: steps.d1.outcome == 'failure'
+        run: sleep 45
+      - id: d2
+        if: steps.d1.outcome == 'failure'
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+      - if: steps.d1.outcome == 'failure' && steps.d2.outcome == 'failure'
+        run: sleep 90
+      - id: d3
+        if: steps.d1.outcome == 'failure' && steps.d2.outcome == 'failure'
         uses: actions/deploy-pages@v4
