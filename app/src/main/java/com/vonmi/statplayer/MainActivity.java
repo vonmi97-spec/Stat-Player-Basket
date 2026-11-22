@@ -12,6 +12,8 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.print.PrintAttributes;
+import android.print.PrintManager;
 import androidx.core.content.FileProvider;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -20,6 +22,7 @@ public class MainActivity extends Activity {
     private WebView web;
     private ValueCallback<Uri[]> fileCb;
     private static final int PICK = 42;
+    private WebView printView; // gardée en mémoire pendant l'impression
 
     @Override
     protected void onCreate(Bundle b) {
@@ -52,6 +55,7 @@ public class MainActivity extends Activity {
             }
         });
         web.addJavascriptInterface(new Bridge(), "Android");
+        web.addJavascriptInterface(new PrintBridge(), "AndroidPrint");
         web.loadUrl("file:///android_asset/index.html");
         setContentView(web);
     }
@@ -75,7 +79,10 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public boolean shareFile(String name, String text) {
+        public boolean shareFile(String name, String text) { return shareFileType(name, text, "text/plain"); }
+
+        @JavascriptInterface
+        public boolean shareFileType(String name, String text, String mime) {
             try {
                 File dir = new File(getCacheDir(), "partage");
                 dir.mkdirs();
@@ -85,7 +92,7 @@ public class MainActivity extends Activity {
                 o.close();
                 Uri u = FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".fichiers", f);
                 Intent i = new Intent(Intent.ACTION_SEND);
-                i.setType("text/plain");
+                i.setType(mime);
                 i.putExtra(Intent.EXTRA_STREAM, u);
                 i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                 startActivity(Intent.createChooser(i, "Partager le compte"));
@@ -93,6 +100,25 @@ public class MainActivity extends Activity {
             } catch (Exception e) {
                 return false;
             }
+        }
+    }
+
+    // Impression / enregistrement en PDF via le service d'impression Android
+    class PrintBridge {
+        @JavascriptInterface
+        public void print(final String html, final String title) {
+            runOnUiThread(() -> {
+                WebView pv = new WebView(MainActivity.this);
+                pv.setWebViewClient(new WebViewClient() {
+                    @Override public void onPageFinished(WebView v, String url) {
+                        PrintManager pm = (PrintManager) getSystemService(PRINT_SERVICE);
+                        pm.print(title, v.createPrintDocumentAdapter(title), new PrintAttributes.Builder().setMediaSize(PrintAttributes.MediaSize.ISO_A4).build());
+                    }
+                    @Override public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) { return true; }
+                });
+                pv.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null);
+                printView = pv;
+            });
         }
     }
 
