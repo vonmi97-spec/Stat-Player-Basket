@@ -6,9 +6,23 @@ android {
         applicationId "com.vonmi.statplayer"
         minSdk 24
         targetSdk 34
-        versionCode 1
-        versionName "1.0"
+        versionCode (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger() + 10
+        versionName "1." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")
     }
-    buildTypes { release { minifyEnabled false; signingConfig signingConfigs.debug } }
+    // Signature fixe (clé stockée dans les secrets GitHub) : chaque version s'installe par-dessus la précédente
+    def ks = file("statplayer.jks")
+    signingConfigs {
+        fixe {
+            if (ks.exists()) {
+                storeFile ks
+                storePassword System.getenv("KEYSTORE_PASSWORD")
+                keyAlias "statplayer"
+                keyPassword System.getenv("KEYSTORE_PASSWORD")
+            }
+        }
+    }
+    buildTypes {
+        release { minifyEnabled false; signingConfig ks.exists() ? signingConfigs.fixe : signingConfigs.debug }
+    }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
 }

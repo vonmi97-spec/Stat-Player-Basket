@@ -13,7 +13,13 @@ jobs:
         with: { distribution: temurin, java-version: '17' }
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: '8.7' }
+      - name: Clé de signature fixe
+        env: { KEYSTORE_B64: '${{ secrets.KEYSTORE_B64 }}' }
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then echo "::error::Secret KEYSTORE_B64 manquant"; exit 1; fi
+          echo "$KEYSTORE_B64" | tr -d ' \n\r' | base64 -d > app/statplayer.jks
       - run: gradle assembleRelease --no-daemon
+        env: { KEYSTORE_PASSWORD: '${{ secrets.KEYSTORE_PASSWORD }}' }
       - run: cp app/build/outputs/apk/release/app-release.apk StatPlayer-Basket.apk
       - uses: actions/upload-artifact@v4
         with: { name: StatPlayer-Basket-APK, path: StatPlayer-Basket.apk }
