@@ -65,7 +65,8 @@ p{line-height:1.45}
 </style>
 </head>
 <body>
-<header><h1>🏀 Stat Player : <span>Basket</span></h1><button id="who" class="chip" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:6px 10px" onclick="tab='donnees';render()"></button><button class="ico" onclick="lockNow()" title="Verrouiller">🔒</button></header>
+<header><h1>🏀 Stat Player : <span>Basket</span></h1><button id="who" class="chip" style="max-width:105px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:6px 10px" onclick="tab='donnees';render()"></button><button class="ico" onclick="refresh()" title="Rafraîchir" style="font-size:22px">⟳</button><button class="ico" onclick="lockNow()" title="Verrouiller">🔒</button></header>
+<div id="ptr" style="position:fixed;top:0;left:50%;transform:translate(-50%,-60px);z-index:6;background:var(--or);color:#fff;border-radius:50%;width:42px;height:42px;display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 4px 12px rgba(0,0,0,.4);transition:transform .2s">⟳</div>
 <main id="app"></main>
 <nav id="nav">
  <button data-t="joueurs"><b>👥</b>Joueurs</button>
@@ -96,7 +97,7 @@ let fp=null;
 let tab="joueurs",sel=null,unlocked=false;
 const acc=()=>A.accounts.find(a=>a.id===cur);
 function openSpace(id,already){cur=id;A.last=id;saveA();D=load()||blank();if(!D.history)D.history=[];if(!D.obs)D.obs=[];sel=null;fp=null;tab="joueurs";unlocked=already||!D.pinHash;render()}
-function logout(){commitTimes();save();cur=null;D=blank();unlocked=false;render();toast("Déconnecté","var(--line)")}
+function logout(){commitTimes();save();try{sessionStorage.removeItem("sp_sess")}catch(e){}cur=null;D=blank();unlocked=false;render();toast("Déconnecté","var(--line)")}
 
 const ST=[
  {k:"p2",l:"2 pts",s:"Panier",c:"var(--or)",pts:2},
@@ -249,7 +250,7 @@ function vDonnees(){
  <div class="row"><button class="b" onclick="showPin('set1')">${D.pinHash?"Changer le PIN":"Définir un PIN"}</button>${D.pinHash?`<button class="b sec" onclick="remPin()">Retirer le PIN</button>`:""}</div></div>
  <div class="card"><h2>📦 Mes données (droit d'accès)</h2><p class="mut">Exporte toutes les données dans un fichier texte que tu peux garder.</p><button class="b sec" style="width:100%" onclick="exportData()">📤 Exporter mes données</button></div>
  <div class="card"><h2>🗑️ Droit à l'effacement</h2><p class="mut">Supprime définitivement tous les joueurs, stats et réglages de ce téléphone.</p><button class="b red" style="width:100%" onclick="wipe()">Effacer toutes les données</button></div>
- <p class="mut" style="text-align:center">Stat Player : Basket · v1.11</p>`;
+ <p class="mut" style="text-align:center">Stat Player : Basket · v1.12</p>`;
 }
 function exportData(){const c={...D};delete c.pinHash;const t=JSON.stringify(c,null,2);if(window.Android&&Android.share)Android.share(t);else if(navigator.share)navigator.share({text:t}).catch(()=>{});else{try{navigator.clipboard.writeText(t);toast("Données copiées")}catch(e){alert(t)}}}
 function wipe(){if(!confirm("Effacer TOUTES les données ? Action irréversible."))return;if(!confirm("Confirmer l'effacement définitif ?"))return;try{localStorage.removeItem(dkey())}catch(e){}delete memS[dkey()];D=blank();unlocked=true;sel=null;tab="joueurs";render();toast("Données effacées","var(--rd)")}
@@ -578,7 +579,20 @@ async function applySync(s){let o;try{const u=ub64(s),body=new Uint8Array(await 
  <p>👉 Maintenant, montre <b>ton</b> QR code à l'autre téléphone pour qu'il reçoive aussi tes données.</p>
  <button class="b" style="width:100%;margin-bottom:8px" onclick="showQR()">📱 Montrer mon QR code</button><button class="b sec" style="width:100%" onclick="closeSync()">Terminé</button>`)}
 
-if(A.last==="guest")openSpace("guest");else render();
+/* ===== Rafraîchir (bouton ⟳ ou tirer vers le bas) ===== */
+function refresh(){if(!$("#ov").classList.contains("hid")&&document.querySelector("#qrv"))return;
+ const p=$("#ptr");p.style.transform="translate(-50%,calc(14px + env(safe-area-inset-top))) rotate(360deg)";
+ try{commitTimes();save();if(cur)sessionStorage.setItem("sp_sess",JSON.stringify({cur,tab,unlocked}))}catch(e){}
+ const go=()=>location.reload();
+ if(!NATIVE&&navigator.serviceWorker&&navigator.serviceWorker.getRegistration)navigator.serviceWorker.getRegistration().then(g=>g&&g.update()).catch(()=>{}).finally(()=>setTimeout(go,350));else setTimeout(go,350)}
+(()=>{let y0=null,dy=0;const p=$("#ptr");
+ addEventListener("touchstart",e=>{y0=(window.scrollY<=0&&$("#ov").classList.contains("hid"))?e.touches[0].clientY:null;dy=0},{passive:true});
+ addEventListener("touchmove",e=>{if(y0==null)return;dy=e.touches[0].clientY-y0;if(dy>0){const d=Math.min(dy*.5,90);p.style.transition="none";p.style.transform=`translate(-50%,${d-50}px) rotate(${d*4}deg)`}},{passive:true});
+ addEventListener("touchend",()=>{if(y0==null)return;y0=null;p.style.transition="transform .2s";if(dy>140)refresh();else p.style.transform="translate(-50%,-60px)"},{passive:true});})();
+
+let ss=null;try{ss=JSON.parse(sessionStorage.getItem("sp_sess"));sessionStorage.removeItem("sp_sess")}catch(e){}
+if(ss&&(ss.cur==="guest"||A.accounts.some(a=>a.id===ss.cur))){openSpace(ss.cur,ss.unlocked);tab=ss.tab||"joueurs";render();toast("Rafraîchi ✓")}
+else if(A.last==="guest")openSpace("guest");else render();
 if(!NATIVE&&location.protocol.startsWith("http")){
  if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
  try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
