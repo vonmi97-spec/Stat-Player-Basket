@@ -6,8 +6,9 @@ android {
         applicationId "com.vonmi.statplayer"
         minSdk 24
         targetSdk 34
-        versionCode (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger() + 10
-        versionName "1." + (System.getenv("GITHUB_RUN_NUMBER") ?: "0")
+        def run = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()
+        versionCode = run + 10
+        versionName = "1." + run
     }
     // Signature fixe (clé stockée dans les secrets GitHub) : chaque version s'installe par-dessus la précédente
     def ks = file("statplayer.jks")
