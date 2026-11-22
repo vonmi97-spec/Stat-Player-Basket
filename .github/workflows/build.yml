@@ -13,15 +13,16 @@ jobs:
         with: { distribution: temurin, java-version: '17' }
       - uses: gradle/actions/setup-gradle@v4
         with: { gradle-version: '8.7' }
-      - name: Clé de signature fixe
-        env: { KEYSTORE_B64: '${{ secrets.KEYSTORE_B64 }}' }
-        run: |
-          if [ -z "$KEYSTORE_B64" ]; then echo "::error::Secret KEYSTORE_B64 manquant"; exit 1; fi
-          CLEAN=$(printf '%s' "$KEYSTORE_B64" | tr -cd 'A-Za-z0-9+/=')
-          echo "Longueur du secret nettoyé : ${#CLEAN} (attendu : 3564)"
-          printf '%s' "$CLEAN" | base64 -d > app/statplayer.jks || { echo "::error::KEYSTORE_B64 incomplet (${#CLEAN}/3564 caractères) : recolle le contenu entier du fichier"; exit 1; }
-      - run: gradle assembleRelease --no-daemon
+      - name: Clé de signature fixe (déchiffrée avec le secret KEYSTORE_PASSWORD)
         env: { KEYSTORE_PASSWORD: '${{ secrets.KEYSTORE_PASSWORD }}' }
+        run: |
+          P=$(printf '%s' "$KEYSTORE_PASSWORD" | tr -d ' \n\r')
+          echo "Longueur du mot de passe : ${#P} (attendu : 32)"
+          printf '%s' "$P" > /tmp/pw
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in app/statplayer.jks.enc -out app/statplayer.jks -pass file:/tmp/pw || { echo "::error::Mot de passe KEYSTORE_PASSWORD incorrect (${#P} caractères)"; exit 1; }
+          echo "KEYSTORE_PASSWORD=$P" >> $GITHUB_ENV
+          rm /tmp/pw
+      - run: gradle assembleRelease --no-daemon
       - run: cp app/build/outputs/apk/release/app-release.apk StatPlayer-Basket.apk
       - uses: actions/upload-artifact@v4
         with: { name: StatPlayer-Basket-APK, path: StatPlayer-Basket.apk }

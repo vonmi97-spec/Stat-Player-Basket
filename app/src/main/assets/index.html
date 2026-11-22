@@ -157,19 +157,22 @@ function vMatch(){
  const team=D.players.reduce((a,x)=>a+pts(S(x.id)),0);
  $("#app").innerHTML=`<div class="card"><div class="row"><input id="mo" placeholder="Adversaire" value="${esc(D.match.opp)}"><input id="md" type="date" value="${esc(D.match.date)}"></div>
  <div class="mut" style="margin-top:8px">Score équipe : <b style="color:var(--or);font-size:16px">${team} pts</b> · Chrono ${fmt(clockEl())} ${D.clock.run?"▶️":"⏸️"}</div></div>
- <div class="card"><h2>Joueur</h2><div class="chips">${D.players.map(x=>`<button class="chip ${x.id===sel?"on":""}" onclick="sel='${x.id}';vMatch()">${x.num?"#"+esc(x.num)+" ":""}${esc(x.name)}${D.onCourt[x.id]?" 🟢":""}</button>`).join("")}</div></div>
+ <div class="card"><h2>① Choisis la stat</h2><div class="grid">${ST.map(t=>`<button class="st" style="background:${t.c};${arm?(arm===t.k?"outline:3px solid #fff;outline-offset:2px;transform:scale(1.04)":"opacity:.4"):""}" onclick="arm=arm==='${t.k}'?null:'${t.k}';vMatch()">${t.l}<small>${t.s}</small></button>`).join("")}</div></div>
+ <div class="card" style="${arm?"border:2px solid var(--or)":""}"><h2>② ${arm?`Attribuer « ${LAB[arm]} » à…`:"Puis touche le joueur"}</h2>
+ ${arm?"":`<p class="mut" style="margin:-4px 0 10px">Sélectionne d'abord une stat ci-dessus.</p>`}
+ <div class="grid" style="grid-template-columns:repeat(2,1fr)">${[...D.players].sort((a,b)=>(D.onCourt[b.id]?1:0)-(D.onCourt[a.id]?1:0)).map(x=>{const q=S(x.id);return`<button class="st" style="background:${x.id===sel?"#334155":"#0b1222"};border:1px solid ${q.fau>=5?"var(--rd)":"var(--line)"};display:flex;align-items:center;gap:8px;text-align:left;padding:8px;opacity:${arm?1:.6}" onclick="assign('${x.id}')"><span class="num" style="width:32px;height:32px;font-size:14px">${esc(x.num||"–")}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.name)}${D.onCourt[x.id]?" 🟢":""}<small>${pts(q)} pts · ${q.fau} F${q.fau>=5?" ⚠️":""}</small></span></button>`}).join("")}</div></div>
+ <div class="row" style="margin-bottom:12px"><button class="b sec" onclick="undo()">↩️ Annuler</button><button class="b sec" onclick="minus()">－1 Corriger</button></div>
  <div class="card"><h2 style="display:flex;justify-content:space-between;align-items:center">${esc(p.name)}<button class="chip" onclick="openFiche('${p.id}')">📈 Fiche (${histOf(p.id).length})</button></h2>
  <div class="score"><div><b>${pts(s)}</b><span>Points</span></div><div><b>${s.reb}</b><span>Rebonds</span></div><div><b>${s.pas}</b><span>Passes</span></div><div><b>${s.lfR}/${lfT}</b><span>LF</span></div>
  <div><b>${s.ctr}</b><span>Contres</span></div><div><b>${s.def}</b><span>Déf. réussies</span></div><div><b>${s.per}</b><span>Pertes</span></div><div><b style="color:${s.fau>=5?"var(--rd)":"inherit"}">${s.fau}</b><span>Fautes</span></div></div>
  ${s.fau>=5?`<p style="color:var(--rd);margin:8px 0 0;font-weight:700">⚠️ 5 fautes – joueur éliminé</p>`:""}</div>
- <div class="grid">${ST.map(t=>`<button class="st" style="background:${t.c}" onclick="rec('${t.k}')">${t.l}<small>${t.s}</small></button>`).join("")}
- <button class="st" style="background:var(--line)" onclick="undo()">↩️ Annuler<small>dernière action</small></button>
- <button class="st" style="background:var(--line)" onclick="minus()">－1<small>corriger…</small></button></div>
- <div class="card" style="margin-top:12px"><h2>Historique</h2><div class="log">${D.log.slice(-30).reverse().map(l=>{const q=D.players.find(x=>x.id===l.id);return`<div><span class="mut">${l.t}</span> · ${esc(q?q.name:"?")} — ${LAB[l.k]}</div>`}).join("")||`<span class="mut">Aucune action</span>`}</div></div>`;
+ <div class="card"><h2>Historique</h2><div class="log">${D.log.slice(-30).reverse().map(l=>{const q=D.players.find(x=>x.id===l.id);return`<div><span class="mut">${l.t}</span> · ${esc(q?q.name:"?")} — ${LAB[l.k]}</div>`}).join("")||`<span class="mut">Aucune action</span>`}</div></div>`;
  $("#mo").onchange=e=>{D.match.opp=e.target.value.slice(0,40);save()};
  $("#md").onchange=e=>{D.match.date=e.target.value;save()};
 }
-function rec(k){D.dirty=true;S(sel)[k]++;D.log.push({id:sel,k,t:fmt(clockEl())});save();vib();toast("+1 "+LAB[k]);vMatch()}
+let arm=null;
+function assign(id){if(!arm){sel=id;vMatch();return toast("Choisis d'abord une stat","var(--yl)")}sel=id;const k=arm;arm=null;rec(k)}
+function rec(k){D.dirty=true;S(sel)[k]++;D.log.push({id:sel,k,t:fmt(clockEl())});save();vib();toast("+1 "+LAB[k]+" → "+(D.players.find(x=>x.id===sel)||{}).name);vMatch()}
 function undo(){const l=D.log.pop();if(!l)return toast("Rien à annuler","var(--line)");const s=S(l.id);if(s[l.k]>0)s[l.k]--;save();toast("Annulé : "+LAB[l.k],"var(--line)");vMatch()}
 function minus(){const ch=prompt("Retirer 1 à quelle stat ?\n"+ST.map((t,i)=>(i+1)+". "+LAB[t.k]).join("\n"));const i=parseInt(ch)-1;if(!(i>=0&&i<ST.length))return;const k=ST[i].k,s=S(sel);if(s[k]>0){s[k]--;for(let j=D.log.length-1;j>=0;j--)if(D.log[j].id===sel&&D.log[j].k===k){D.log.splice(j,1);break}save();toast("−1 "+LAB[k],"var(--line)")}vMatch()}
 
@@ -225,7 +228,7 @@ function vDonnees(){
  <div class="row"><button class="b" onclick="showPin('set1')">${D.pinHash?"Changer le PIN":"Définir un PIN"}</button>${D.pinHash?`<button class="b sec" onclick="remPin()">Retirer le PIN</button>`:""}</div></div>
  <div class="card"><h2>📦 Mes données (droit d'accès)</h2><p class="mut">Exporte toutes les données dans un fichier texte que tu peux garder.</p><button class="b sec" style="width:100%" onclick="exportData()">📤 Exporter mes données</button></div>
  <div class="card"><h2>🗑️ Droit à l'effacement</h2><p class="mut">Supprime définitivement tous les joueurs, stats et réglages de ce téléphone.</p><button class="b red" style="width:100%" onclick="wipe()">Effacer toutes les données</button></div>
- <p class="mut" style="text-align:center">Stat Player : Basket · v1.4</p>`;
+ <p class="mut" style="text-align:center">Stat Player : Basket · v1.5</p>`;
 }
 function exportData(){const c={...D};delete c.pinHash;const t=JSON.stringify(c,null,2);if(window.Android&&Android.share)Android.share(t);else if(navigator.share)navigator.share({text:t}).catch(()=>{});else{try{navigator.clipboard.writeText(t);toast("Données copiées")}catch(e){alert(t)}}}
 function wipe(){if(!confirm("Effacer TOUTES les données ? Action irréversible."))return;if(!confirm("Confirmer l'effacement définitif ?"))return;try{localStorage.removeItem(KEY)}catch(e){}mem=null;D=blank();unlocked=true;sel=null;tab="joueurs";render();toast("Données effacées","var(--rd)")}
