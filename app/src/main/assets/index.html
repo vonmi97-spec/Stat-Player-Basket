@@ -18,7 +18,7 @@
 body{margin:0;font-family:system-ui,-apple-system,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding-bottom:calc(72px + env(safe-area-inset-bottom));user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none}
 input{-webkit-user-select:text;user-select:text}
 header{position:sticky;top:0;z-index:5;background:#020617;padding:calc(12px + env(safe-area-inset-top)) 16px 12px;display:flex;align-items:center;gap:10px;border-bottom:2px solid var(--or)}
-header h1{font-size:18px;margin:0;flex:1}header h1 span{color:var(--or)}
+header h1{font-size:16px;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}header h1 span{color:var(--or)}
 .ico{background:none;border:0;color:var(--txt);font-size:20px;padding:4px 8px}
 main{padding:14px;max-width:720px;margin:auto}
 .card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px}
@@ -65,14 +65,14 @@ p{line-height:1.45}
 </style>
 </head>
 <body>
-<header><h1>🏀 Stat Player : <span>Basket</span></h1><button class="ico" onclick="lockNow()" title="Verrouiller">🔒</button></header>
+<header><h1>🏀 Stat Player : <span>Basket</span></h1><button id="who" class="chip" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:6px 10px" onclick="tab='donnees';render()"></button><button class="ico" onclick="lockNow()" title="Verrouiller">🔒</button></header>
 <main id="app"></main>
 <nav id="nav">
  <button data-t="joueurs"><b>👥</b>Joueurs</button>
  <button data-t="match"><b>📋</b>Match</button>
  <button data-t="temps"><b>⏱️</b>Temps</button>
  <button data-t="stats"><b>📊</b>Stats</button>
- <button data-t="observer"><b>📝</b>Observer</button>
+ <button data-t="observer"><b>📝</b>Note</button>
  <button data-t="donnees"><b>🛡️</b>Données</button>
 </nav>
 <div id="ov" class="hid"></div>
@@ -80,15 +80,23 @@ p{line-height:1.45}
 
 <script>
 /* ===== Stockage local uniquement (aucune donnée ne quitte l'appareil) ===== */
-const KEY="statplayer_v1";
-let mem=null;
-function load(){try{const s=localStorage.getItem(KEY);if(s)return JSON.parse(s)}catch(e){}return mem}
-function save(){mem=D;try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){}}
+/* Chaque compte (ou l'invité) a son propre espace de données, séparé, sur ce téléphone */
+const KEY="statplayer_v1",AKEY="statplayer_accounts";
+let A=null;try{A=JSON.parse(localStorage.getItem(AKEY))}catch(e){}
+if(!A)A={accounts:[],last:null};
+function saveA(){try{localStorage.setItem(AKEY,JSON.stringify(A))}catch(e){}}
+try{const old=localStorage.getItem(KEY);if(old&&!localStorage.getItem(KEY+"_guest")){localStorage.setItem(KEY+"_guest",old);localStorage.removeItem(KEY);A.last="guest";saveA()}}catch(e){}
+let cur=null;const memS={};
+const dkey=(c=cur)=>c==="guest"?KEY+"_guest":KEY+"_u_"+c;
+function load(c=cur){try{const s=localStorage.getItem(dkey(c));if(s)return JSON.parse(s)}catch(e){}return memS[dkey(c)]||null}
+function save(){if(!cur)return;memS[dkey()]=D;try{localStorage.setItem(dkey(),JSON.stringify(D))}catch(e){}}
 const blank=()=>({consent:false,pinHash:null,players:[],match:{name:"",opp:"",date:new Date().toISOString().slice(0,10)},stats:{},time:{},onCourt:{},clock:{run:false,start:0,el:0},log:[],history:[],obs:[]});
-let D=load()||blank();
-if(!D.history)D.history=[];if(!D.obs)D.obs=[];
+let D=blank();
 let fp=null;
-let tab="joueurs",sel=null,unlocked=!D.pinHash;
+let tab="joueurs",sel=null,unlocked=false;
+const acc=()=>A.accounts.find(a=>a.id===cur);
+function openSpace(id,already){cur=id;A.last=id;saveA();D=load()||blank();if(!D.history)D.history=[];if(!D.obs)D.obs=[];sel=null;fp=null;tab="joueurs";unlocked=already||!D.pinHash;render()}
+function logout(){commitTimes();save();cur=null;D=blank();unlocked=false;render();toast("Déconnecté","var(--line)")}
 
 const ST=[
  {k:"p2",l:"2 pts",s:"Panier",c:"var(--or)",pts:2},
@@ -126,6 +134,8 @@ function ptime(id){const t=D.time[id]||0;return t+(D.clock.run&&D.onCourt[id]?Da
 /* ===== Navigation ===== */
 document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.t;render()});
 function render(){
+ if(!cur)return showAuth(A.accounts.length?"home":"home");
+ const w=$("#who");if(w)w.textContent=cur==="guest"?"👋 Invité":"👤 "+(acc()||{}).name;
  if(!D.consent)return showConsent();
  if(!unlocked)return showPin("unlock");
  $("#ov").classList.add("hid");
@@ -216,7 +226,7 @@ function newMatch(){if(D.dirty&&!confirm("⚠️ Les stats de ce match n'ont pas
 /* ===== Protection des données ===== */
 function vDonnees(){
  $("#app").innerHTML=`<div class="card"><h2>🛡️ Protection des données</h2>
- <p>• Toutes les données (noms, statistiques, temps de jeu, observations) sont stockées <b>uniquement sur ce téléphone</b>.<br>
+ <p>• Toutes les données (noms, statistiques, temps de jeu, notes) sont stockées <b>uniquement sur ce téléphone</b>.<br>
  ${NATIVE?`• L'application <b>n'a pas accès à Internet</b> : aucune donnée n'est envoyée, partagée ou vendue.<br>
  • La sauvegarde automatique Android est désactivée : les données ne partent pas dans le cloud.<br>
  • Les captures d'écran sont bloquées pour éviter les fuites.<br>`:`• L'appli fonctionne <b>hors connexion</b> : les données ne sont jamais envoyées sur Internet, ni partagées, ni vendues.<br>
@@ -224,16 +234,17 @@ function vDonnees(){
  • Supprimer l'appli de l'écran d'accueil efface aussi ses données.<br>`}
  • Aucune publicité, aucun compte, aucun traceur.<br>
  • Si tu suis des <b>mineurs</b>, obtiens l'accord des parents avant d'enregistrer leur nom (RGPD). Tu peux utiliser un prénom ou un surnom.</p></div>
+ ${accountCard()}
  <div class="card"><h2>🔒 Code PIN</h2><p class="mut">${D.pinHash?"Un code PIN protège l'accès à l'application.":"Aucun code PIN. Ajoute-en un pour protéger les données."}</p>
  <div class="row"><button class="b" onclick="showPin('set1')">${D.pinHash?"Changer le PIN":"Définir un PIN"}</button>${D.pinHash?`<button class="b sec" onclick="remPin()">Retirer le PIN</button>`:""}</div></div>
  <div class="card"><h2>📦 Mes données (droit d'accès)</h2><p class="mut">Exporte toutes les données dans un fichier texte que tu peux garder.</p><button class="b sec" style="width:100%" onclick="exportData()">📤 Exporter mes données</button></div>
  <div class="card"><h2>🗑️ Droit à l'effacement</h2><p class="mut">Supprime définitivement tous les joueurs, stats et réglages de ce téléphone.</p><button class="b red" style="width:100%" onclick="wipe()">Effacer toutes les données</button></div>
- <p class="mut" style="text-align:center">Stat Player : Basket · v1.5</p>`;
+ <p class="mut" style="text-align:center">Stat Player : Basket · v1.6</p>`;
 }
 function exportData(){const c={...D};delete c.pinHash;const t=JSON.stringify(c,null,2);if(window.Android&&Android.share)Android.share(t);else if(navigator.share)navigator.share({text:t}).catch(()=>{});else{try{navigator.clipboard.writeText(t);toast("Données copiées")}catch(e){alert(t)}}}
-function wipe(){if(!confirm("Effacer TOUTES les données ? Action irréversible."))return;if(!confirm("Confirmer l'effacement définitif ?"))return;try{localStorage.removeItem(KEY)}catch(e){}mem=null;D=blank();unlocked=true;sel=null;tab="joueurs";render();toast("Données effacées","var(--rd)")}
-function remPin(){if(!confirm("Retirer le code PIN ?"))return;D.pinHash=null;save();toast("PIN retiré");render()}
-function lockNow(){if(!D.pinHash){tab="donnees";render();return toast("Définis d'abord un code PIN","var(--yl)")}unlocked=false;render()}
+function wipe(){if(!confirm("Effacer TOUTES les données ? Action irréversible."))return;if(!confirm("Confirmer l'effacement définitif ?"))return;try{localStorage.removeItem(dkey())}catch(e){}delete memS[dkey()];D=blank();unlocked=true;sel=null;tab="joueurs";render();toast("Données effacées","var(--rd)")}
+function remPin(){if(!confirm("Retirer le code PIN ?"))return;D.pinHash=null;D.pinRec=null;save();toast("PIN retiré");render()}
+function lockNow(){if(D.pinHash){unlocked=false;return render()}if(cur!=="guest")return logout();tab="donnees";render();toast("Définis un code PIN pour verrouiller","var(--yl)")}
 
 function showConsent(){const o=$("#ov");o.classList.remove("hid");o.innerHTML=`<div class="card"><h2 style="font-size:20px">🏀 Bienvenue dans Stat Player : Basket</h2>
  <h2>Protection de tes données</h2><p>Cette application enregistre le <b>nom des joueurs</b> et leurs <b>statistiques de match</b>.</p>
@@ -245,14 +256,14 @@ let pinBuf="",pinMode="unlock",pinFirst="";
 function showPin(m){pinMode=m;pinBuf="";const o=$("#ov");o.classList.remove("hid");drawPin()}
 function drawPin(){const t={unlock:"Entre ton code PIN",set1:"Choisis un code PIN (4 chiffres)",set2:"Confirme le code PIN"}[pinMode];
  $("#ov").innerHTML=`<div class="card" style="text-align:center"><h2>🔒 ${t}</h2><div class="pin">${[0,1,2,3].map(i=>`<i class="${i<pinBuf.length?"f":""}"></i>`).join("")}</div>
- <div class="kp">${[1,2,3,4,5,6,7,8,9].map(n=>`<button onclick="pk('${n}')">${n}</button>`).join("")}<button onclick="${pinMode==="unlock"?"":"render()"}">${pinMode==="unlock"?"":"✕"}</button><button onclick="pk('0')">0</button><button onclick="pinBuf=pinBuf.slice(0,-1);drawPin()">⌫</button></div></div>`}
+ <div class="kp">${[1,2,3,4,5,6,7,8,9].map(n=>`<button onclick="pk('${n}')">${n}</button>`).join("")}<button onclick="${pinMode==="unlock"?"":"render()"}">${pinMode==="unlock"?"":"✕"}</button><button onclick="pk('0')">0</button><button onclick="pinBuf=pinBuf.slice(0,-1);drawPin()">⌫</button></div>${pinMode==="unlock"?`<button class="b sec" style="width:100%;margin-top:14px" onclick="showAuth('forgotPin')">Code PIN oublié ?</button>${cur!=="guest"||A.accounts.length?`<button class="b sec" style="width:100%;margin-top:8px" onclick="logout()">Changer de compte</button>`:""}`:""}</div>`}
 async function pk(n){if(pinBuf.length>=4)return;pinBuf+=n;drawPin();if(pinBuf.length<4)return;
  if(pinMode==="unlock"){if(await hash(pinBuf)===D.pinHash){unlocked=true;render()}else{toast("Code incorrect","var(--rd)");pinBuf="";setTimeout(drawPin,200)}}
  else if(pinMode==="set1"){pinFirst=pinBuf;pinMode="set2";pinBuf="";setTimeout(drawPin,150)}
- else{if(pinBuf===pinFirst){D.pinHash=await hash(pinBuf);unlocked=true;save();toast("Code PIN enregistré");render()}else{toast("Les codes ne correspondent pas","var(--rd)");pinMode="set1";pinBuf="";setTimeout(drawPin,200)}}}
+ else{if(pinBuf===pinFirst){D.pinHash=await hash(pinBuf);const c=recCode();D.pinSalt=salt();D.pinRec=await pbk(norm(c),D.pinSalt);unlocked=true;save();showCode(c,"code PIN","render()")}else{toast("Les codes ne correspondent pas","var(--rd)");pinMode="set1";pinBuf="";setTimeout(drawPin,200)}}}
 
 /* Verrouillage auto quand l'appli passe en arrière-plan */
-document.addEventListener("visibilitychange",()=>{if(document.hidden){commitTimes();save();if(D.pinHash){unlocked=false}}else if(D.pinHash&&!unlocked)render()});
+document.addEventListener("visibilitychange",()=>{if(!cur)return;if(document.hidden){commitTimes();save();if(D.pinHash){unlocked=false}}else if(D.pinHash&&!unlocked)render()});
 /* ===== Enregistrement des stats par joueur ===== */
 const KS=["p2","p3","lfR","lfM","reb","ctr","pas","def","per","fau"];
 const played=id=>KS.some(k=>S(id)[k]>0)||ptime(id)>0;
@@ -289,14 +300,14 @@ function vFiche(){
  <p class="mut" style="margin:10px 0 0">Lancers francs : <b style="color:var(--txt)">${T.lfR}/${lfT}</b> ${lfT?`(${Math.round(T.lfR*100/lfT)} %)`:""} · Total : <b style="color:var(--txt)">${pts(T)} pts</b>, ${T.reb} reb, ${T.pas} passes</p></div>
  <div class="card"><h2>📅 Matchs enregistrés</h2>${n?`<div class="tw"><table><tr><th>Match</th><th>Min</th><th>Pts</th><th>LF</th><th>Reb</th><th>Ctr</th><th>Pas</th><th>Déf</th><th>Pdb</th><th>F</th><th>Note</th><th></th></tr>
  ${H.map(({m,s})=>`<tr><td>${esc(m.date.slice(8,10)+"/"+m.date.slice(5,7))}${m.opp?"<br><span class='mut'>"+esc(m.opp)+"</span>":""}</td><td>${fmt(s.min||0)}</td><td><b>${pts(s)}</b></td><td>${s.lfR}/${s.lfR+s.lfM}</td><td>${s.reb}</td><td>${s.ctr}</td><td>${s.pas}</td><td>${s.def}</td><td>${s.per}</td><td>${s.fau}</td><td>${nB(note(s))}</td><td><button class="ico" style="font-size:15px;padding:2px" onclick="delHist('${m.id}')">🗑️</button></td></tr>`).join("")}</table></div>`:`<p class="mut">Aucun match enregistré. Dans l'onglet <b>Stats</b>, touche « Enregistrer les stats des joueurs sélectionnés ».</p>`}</div>
- <div class="card"><h2>📝 Observations (${OB.length})</h2>${OB.length?OB.map(obHtml).join(""):`<p class="mut">Aucune observation. Utilise l'onglet <b>Observer</b>.</p>`}<button class="b sec" style="width:100%;margin-top:6px" onclick="sel='${fp}';tab='observer';render()">＋ Ajouter une observation</button></div>
+ <div class="card"><h2>📝 Notes (${OB.length})</h2>${OB.length?OB.map(obHtml).join(""):`<p class="mut">Aucune note. Utilise l'onglet <b>Note</b>.</p>`}<button class="b sec" style="width:100%;margin-top:6px" onclick="sel='${fp}';tab='observer';render()">＋ Ajouter une note</button></div>
  ${n||OB.length?`<button class="b" style="width:100%" onclick="shareFiche()">📤 Partager la fiche</button>`:""}`;
 }
 function delHist(mid){if(!confirm("Retirer ce match de la fiche du joueur ?"))return;const m=D.history.find(x=>x.id===mid);if(m){delete m.players[fp];if(!Object.keys(m.players).length){D.history=D.history.filter(x=>x!==m);if(D.curHist===mid)D.curHist=null}}save();vFiche()}
 function shareFiche(){const p=D.players.find(x=>x.id===fp),H=histOf(fp);let t=`🏀 Fiche de ${p.name}${p.num?" (#"+p.num+")":""} – ${H.length} match(s)\n\n`;
  H.forEach(({m,s})=>{t+=`${m.date}${m.opp?" vs "+m.opp:""} : ${pts(s)} pts, ${s.reb} reb, ${s.pas} passes, ${s.ctr} ctr, ${s.def} déf, ${s.per} pertes, ${s.fau} F, LF ${s.lfR}/${s.lfR+s.lfM}, ${fmt(s.min||0)}, note ${note(s)}/100\n`});
  const nm=avgNote(fp);if(nm!=null)t+=`\nNote moyenne : ${nm}/100\n`;
- const OB=D.obs.filter(o=>o.pid===fp).sort((a,b)=>b.ts-a.ts);if(OB.length){t+=`\n📝 Observations :\n`;OB.forEach(o=>{t+=`- [${o.cat}] ${o.date}${o.opp?" vs "+o.opp:""} : ${o.txt}\n`})}
+ const OB=D.obs.filter(o=>o.pid===fp).sort((a,b)=>b.ts-a.ts);if(OB.length){t+=`\n📝 Notes :\n`;OB.forEach(o=>{t+=`- [${o.cat}] ${o.date}${o.opp?" vs "+o.opp:""} : ${o.txt}\n`})}
  if(window.Android&&Android.share)Android.share(t);else if(navigator.share)navigator.share({text:t}).catch(()=>{});else{try{navigator.clipboard.writeText(t);toast("Fiche copiée")}catch(e){alert(t)}}}
 
 function avgNote(id){const H=histOf(id);if(!H.length)return null;return Math.round(H.reduce((a,{s})=>a+note(s),0)/H.length)}
@@ -323,23 +334,82 @@ function vObs(){
  if(!sel||!D.players.find(p=>p.id===sel))sel=D.players[0].id;
  const p=D.players.find(x=>x.id===sel),draft=$("#otx")?$("#otx").value:"";
  const OB=D.obs.filter(o=>o.pid===sel&&(obFilter==="all"||o.cat===obFilter)).sort((a,b)=>b.ts-a.ts);
- $("#app").innerHTML=`<div class="card"><h2>Joueur observé</h2><div class="chips">${D.players.map(x=>`<button class="chip ${x.id===sel?"on":""}" onclick="sel='${x.id}';vObs()">${x.num?"#"+esc(x.num)+" ":""}${esc(x.name)}</button>`).join("")}</div></div>
- <div class="card"><h2>📝 Nouvelle observation – ${esc(p.name)}</h2>
+ $("#app").innerHTML=`<div class="card"><h2>Joueur</h2><div class="chips">${D.players.map(x=>`<button class="chip ${x.id===sel?"on":""}" onclick="sel='${x.id}';vObs()">${x.num?"#"+esc(x.num)+" ":""}${esc(x.name)}</button>`).join("")}</div></div>
+ <div class="card"><h2>📝 Nouvelle note – ${esc(p.name)}</h2>
  <div class="chips" style="margin-bottom:10px">${CATS.map(c=>`<button class="chip" style="${obCat===c.k?`background:${c.c};border-color:${c.c}`:""}" onclick="obCat='${c.k}';vObs()">${c.i} ${c.k}</button>`).join("")}</div>
  <textarea id="otx" maxlength="1000" placeholder="Ex. : bon placement en défense, doit lever la tête avant de passer, encourage ses coéquipiers…"></textarea>
  <p class="mut" style="margin:6px 0 10px">Liée au match ${D.match.opp?"vs "+esc(D.match.opp):"en cours"} du ${esc(D.match.date)}. Reste objectif et respectueux : le joueur ou ses parents peuvent demander à voir ces notes.</p>
- <button class="b" style="width:100%" onclick="addObs()">💾 Enregistrer l'observation</button></div>
+ <button class="b" style="width:100%" onclick="addObs()">💾 Enregistrer la note</button></div>
  <div class="card"><h2>Historique (${OB.length})</h2>
  <div class="chips" style="margin-bottom:10px"><button class="chip ${obFilter==="all"?"on":""}" onclick="obFilter='all';vObs()">Toutes</button>${CATS.map(c=>`<button class="chip ${obFilter===c.k?"on":""}" onclick="obFilter='${c.k}';vObs()">${c.i} ${c.k}</button>`).join("")}</div>
- ${OB.length?OB.map(obHtml).join(""):`<p class="mut">Aucune observation pour ce joueur.</p>`}
+ ${OB.length?OB.map(obHtml).join(""):`<p class="mut">Aucune note pour ce joueur.</p>`}
  <button class="b sec" style="width:100%;margin-top:4px" onclick="openFiche('${sel}')">📈 Voir la fiche complète</button></div>`;
  $("#otx").value=draft;
 }
-function addObs(){const t=$("#otx").value.trim();if(!t)return toast("Écris une observation","var(--rd)");
- D.obs.push({id:"o"+Date.now().toString(36),pid:sel,cat:obCat,txt:t.slice(0,1000),date:D.match.date,opp:D.match.opp,ts:Date.now()});save();$("#otx").value="";toast("Observation enregistrée");vObs()}
-function delObs(id){if(!confirm("Supprimer cette observation ?"))return;D.obs=D.obs.filter(o=>o.id!==id);save();render()}
+function addObs(){const t=$("#otx").value.trim();if(!t)return toast("Écris une note","var(--rd)");
+ D.obs.push({id:"o"+Date.now().toString(36),pid:sel,cat:obCat,txt:t.slice(0,1000),date:D.match.date,opp:D.match.opp,ts:Date.now()});save();$("#otx").value="";toast("Note enregistrée");vObs()}
+function delObs(id){if(!confirm("Supprimer cette note ?"))return;D.obs=D.obs.filter(o=>o.id!==id);save();render()}
 
-render();
+/* ===== Comptes locaux, invité, codes de secours ===== */
+const rnd=n=>{const a=new Uint8Array(n);try{crypto.getRandomValues(a)}catch(e){for(let i=0;i<n;i++)a[i]=Math.random()*256|0}return a};
+const salt=()=>[...rnd(16)].map(x=>x.toString(16).padStart(2,"0")).join("");
+const norm=s=>String(s).toUpperCase().replace(/[^A-Z0-9]/g,"");
+function recCode(){const c="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";const s=[...rnd(8)].map(x=>c[x%32]).join("");return s.slice(0,4)+"-"+s.slice(4)}
+async function pbk(pw,sl){try{const k=await crypto.subtle.importKey("raw",new TextEncoder().encode(pw),"PBKDF2",false,["deriveBits"]);const b=await crypto.subtle.deriveBits({name:"PBKDF2",salt:new TextEncoder().encode(sl),iterations:100000,hash:"SHA-256"},k,256);return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}catch(e){return hash(sl+":"+pw)}}
+let authAcc=null;
+const ov=html=>{const o=$("#ov");o.classList.remove("hid");o.innerHTML=`<div class="card">${html}</div>`};
+const fld=(id,ph,t="text",x="")=>`<input id="${id}" type="${t}" placeholder="${ph}" ${x} style="margin-bottom:10px" autocomplete="off">`;
+function guestHas(){const g=load("guest");return !!(g&&(g.players||[]).length)}
+function showAuth(v,id){if(id)authAcc=id;const a=A.accounts.find(x=>x.id===authAcc);
+ if(v==="home")ov(`<h2 style="font-size:20px">🏀 Stat Player : Basket</h2><p class="mut" style="margin-top:0">Connecte-toi, crée un compte ou continue en invité. Les comptes sont enregistrés <b>uniquement sur ce téléphone</b>, protégés par mot de passe.</p>
+ ${A.accounts.map(x=>`<button class="b sec" style="width:100%;margin-bottom:8px;text-align:left" onclick="showAuth('login','${x.id}')">👤 ${esc(x.name)}${x.email?` <span class="mut">· ${esc(x.email)}</span>`:""}${A.last===x.id?" ⭐":""}</button>`).join("")}
+ <button class="b" style="width:100%;margin-bottom:8px" onclick="showAuth('create')">＋ Créer un compte</button>
+ <button class="b sec" style="width:100%" onclick="openSpace('guest')">👋 Continuer en invité</button>
+ <p class="mut" style="margin-bottom:0">En invité, rien à créer : tes données restent sur le téléphone, sans mot de passe. Tu pourras créer un compte plus tard et les y transférer.</p>`);
+ else if(v==="login"){ov(`<h2>👤 ${esc(a.name)}</h2>${fld("lp","Mot de passe","password")}<button class="b" style="width:100%" onclick="doLogin()">Se connecter</button>
+ <div class="row" style="margin-top:8px"><button class="b sec" onclick="showAuth('home')">‹ Retour</button><button class="b sec" onclick="showAuth('forgotPw')">Mot de passe oublié ?</button></div>`);const i=$("#lp");i.focus();i.onkeydown=e=>{if(e.key==="Enter")doLogin()}}
+ else if(v==="create")ov(`<h2>＋ Créer un compte</h2>${fld("cn","Nom ou pseudo (ex. Coach Karim)","text",'maxlength="30"')}${fld("ce","E-mail (facultatif)","email",'maxlength="60"')}${fld("cp","Mot de passe (6 caractères min.)","password")}${fld("cp2","Confirme le mot de passe","password")}
+ ${guestHas()?`<label class="row" style="margin-bottom:10px;gap:10px"><input id="cg" type="checkbox" ${cur==="guest"?"checked":""} style="width:22px;min-height:22px;height:22px;flex:none;-webkit-appearance:checkbox;appearance:checkbox;accent-color:var(--or)"><span>Transférer les données invité dans ce compte</span></label>`:""}
+ <p class="mut" style="margin-top:0">L'e-mail sert seulement à reconnaître le compte : rien n'est envoyé. En cas d'oubli, c'est le <b>code de secours</b> (affiché juste après) qui permet de récupérer l'accès.</p>
+ <button class="b" style="width:100%" onclick="doCreate()">Créer mon compte</button><button class="b sec" style="width:100%;margin-top:8px" onclick="${cur?"render()":"showAuth('home')"}">Annuler</button>`);
+ else if(v==="forgotPw")ov(`<h2>🔑 Mot de passe oublié – ${esc(a.name)}</h2><p class="mut" style="margin-top:0">Entre le code de secours reçu à la création du compte, puis choisis un nouveau mot de passe.</p>
+ ${fld("fc","Code de secours (ex. ABCD-EFGH)","text",'autocapitalize="characters"')}${fld("fp1","Nouveau mot de passe","password")}${fld("fp2","Confirme le mot de passe","password")}
+ <button class="b" style="width:100%" onclick="doResetPw()">Valider</button><button class="b sec" style="width:100%;margin-top:8px" onclick="showAuth('login')">‹ Retour</button>
+ <p class="mut">Code de secours perdu ? Sans lui, personne ne peut ouvrir ce compte (c'est ce qui protège tes données). Tu peux seulement le supprimer :</p><button class="b red" style="width:100%" onclick="delAcc('${a.id}',true)">🗑️ Supprimer ce compte et ses données</button>`);
+ else if(v==="forgotPin")ov(`<h2>🔑 Code PIN oublié</h2>
+ ${cur!=="guest"?`<p class="mut" style="margin-top:0">Option 1 : entre le mot de passe de ton compte.</p>${fld("fpw","Mot de passe du compte","password")}<button class="b" style="width:100%;margin-bottom:14px" onclick="pinByPw()">Retirer le PIN avec mon mot de passe</button>`:""}
+ ${D.pinRec?`<p class="mut" style="margin-top:0">${cur!=="guest"?"Option 2":"Option 1"} : entre le code de secours affiché quand tu as créé le PIN.</p>${fld("fpc","Code de secours (ex. ABCD-EFGH)","text",'autocapitalize="characters"')}<button class="b" style="width:100%;margin-bottom:14px" onclick="pinByCode()">Retirer le PIN avec le code de secours</button>`:""}
+ <p class="mut">Dernier recours : effacer les données de ${cur==="guest"?"l'espace invité":"ce compte"} pour repartir de zéro (irréversible).</p><button class="b red" style="width:100%" onclick="pinWipe()">Effacer les données et retirer le PIN</button>
+ <button class="b sec" style="width:100%;margin-top:8px" onclick="showPin('unlock')">‹ Retour</button>`);
+}
+function showCode(c,what,next){ov(`<h2>🛟 Ton code de secours</h2><p>Note-le ou fais une capture d'écran${NATIVE?" (bloquée dans l'appli : recopie-le sur papier)":""}. Il permet de récupérer l'accès si tu oublies ton ${what}.</p>
+ <div style="font-size:32px;font-weight:800;letter-spacing:4px;text-align:center;background:#0b1222;border:2px dashed var(--or);border-radius:12px;padding:16px;margin:12px 0;-webkit-user-select:text;user-select:text">${c}</div>
+ <p class="mut">Il ne sera plus jamais affiché. Ne le partage avec personne.</p><button class="b" style="width:100%" onclick="${next}">J'ai noté mon code</button>`)}
+async function doLogin(){const a=A.accounts.find(x=>x.id===authAcc),pw=$("#lp").value;if(await pbk(pw,a.salt)===a.pw){openSpace(a.id,true);toast("Bienvenue "+a.name)}else{toast("Mot de passe incorrect","var(--rd)");$("#lp").value=""}}
+async function doCreate(){const n=$("#cn").value.trim(),e=$("#ce").value.trim(),p1=$("#cp").value,p2=$("#cp2").value,g=$("#cg")&&$("#cg").checked;
+ if(!n)return toast("Entre un nom","var(--rd)");if(A.accounts.some(a=>a.name.toLowerCase()===n.toLowerCase()))return toast("Ce nom existe déjà","var(--rd)");
+ if(e&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))return toast("E-mail invalide","var(--rd)");if(p1.length<6)return toast("Mot de passe : 6 caractères minimum","var(--rd)");if(p1!==p2)return toast("Les mots de passe ne correspondent pas","var(--rd)");
+ if(cur){commitTimes();save()}
+ const a={id:"u"+Date.now().toString(36),name:n.slice(0,30),email:e.slice(0,60),salt:salt(),created:new Date().toISOString().slice(0,10)},c=recCode();a.pw=await pbk(p1,a.salt);a.rec=await pbk(norm(c),a.salt);A.accounts.push(a);saveA();
+ if(g){try{const gd=localStorage.getItem(dkey("guest"));if(gd){const o=JSON.parse(gd);o.pinHash=null;o.pinRec=null;localStorage.setItem(dkey(a.id),JSON.stringify(o));localStorage.removeItem(dkey("guest"))}}catch(x){}}
+ authAcc=a.id;window._afterCode=()=>openSpace(a.id,true);showCode(c,"mot de passe","_afterCode()")}
+async function doResetPw(){const a=A.accounts.find(x=>x.id===authAcc),c=$("#fc").value,p1=$("#fp1").value,p2=$("#fp2").value;
+ if(await pbk(norm(c),a.salt)!==a.rec)return toast("Code de secours incorrect","var(--rd)");if(p1.length<6)return toast("Mot de passe : 6 caractères minimum","var(--rd)");if(p1!==p2)return toast("Les mots de passe ne correspondent pas","var(--rd)");
+ a.pw=await pbk(p1,a.salt);const nc=recCode();a.rec=await pbk(norm(nc),a.salt);saveA();window._afterCode=()=>openSpace(a.id,true);toast("Mot de passe changé");showCode(nc,"mot de passe (nouveau code)","_afterCode()")}
+function delAcc(id,fromAuth){const a=A.accounts.find(x=>x.id===id);if(!confirm(`Supprimer le compte « ${a.name} » et TOUTES ses données ? Action irréversible.`))return;if(!confirm("Confirmer la suppression définitive ?"))return;
+ try{localStorage.removeItem(dkey(id))}catch(e){}delete memS[dkey(id)];A.accounts=A.accounts.filter(x=>x.id!==id);if(A.last===id)A.last=null;saveA();cur=null;D=blank();toast("Compte supprimé","var(--rd)");render()}
+async function pinByPw(){const a=acc();if(await pbk($("#fpw").value,a.salt)!==a.pw)return toast("Mot de passe incorrect","var(--rd)");D.pinHash=null;D.pinRec=null;save();unlocked=true;toast("PIN retiré");render()}
+async function pinByCode(){if(await pbk(norm($("#fpc").value),D.pinSalt)!==D.pinRec)return toast("Code de secours incorrect","var(--rd)");D.pinHash=null;D.pinRec=null;save();unlocked=true;tab="donnees";toast("PIN retiré : tu peux en créer un nouveau");render()}
+function pinWipe(){if(!confirm("Effacer toutes les données de cet espace et retirer le PIN ? Action irréversible."))return;if(!confirm("Confirmer l'effacement définitif ?"))return;try{localStorage.removeItem(dkey())}catch(e){}delete memS[dkey()];D=blank();unlocked=true;tab="joueurs";render();toast("Données effacées","var(--rd)")}
+async function changePw(){const a=acc(),o=prompt("Mot de passe actuel");if(o===null)return;if(await pbk(o,a.salt)!==a.pw)return toast("Mot de passe incorrect","var(--rd)");const n=prompt("Nouveau mot de passe (6 caractères min.)");if(!n||n.length<6)return toast("6 caractères minimum","var(--rd)");if(prompt("Confirme le nouveau mot de passe")!==n)return toast("Les mots de passe ne correspondent pas","var(--rd)");a.pw=await pbk(n,a.salt);saveA();toast("Mot de passe changé")}
+async function newRec(){const a=acc(),o=prompt("Mot de passe du compte");if(o===null)return;if(await pbk(o,a.salt)!==a.pw)return toast("Mot de passe incorrect","var(--rd)");const c=recCode();a.rec=await pbk(norm(c),a.salt);saveA();showCode(c,"mot de passe","render()")}
+function accountCard(){const a=acc();return a?`<div class="card"><h2>👤 Mon compte</h2><p style="margin-top:0"><b>${esc(a.name)}</b>${a.email?`<br><span class="mut">${esc(a.email)}</span>`:""}<br><span class="mut">Créé le ${esc(a.created)} · stocké uniquement sur ce téléphone</span></p>
+ <div class="row" style="margin-bottom:8px"><button class="b sec" onclick="changePw()">🔑 Mot de passe</button><button class="b sec" onclick="newRec()">🛟 Code de secours</button></div>
+ <div class="row"><button class="b" onclick="logout()">Se déconnecter</button><button class="b red" onclick="delAcc('${a.id}')">Supprimer le compte</button></div></div>`
+ :`<div class="card"><h2>👋 Mode invité</h2><p class="mut" style="margin-top:0">Tes données sont sur ce téléphone, sans mot de passe. Crée un compte pour les protéger (elles y seront transférées).</p>
+ <div class="row"><button class="b" onclick="showAuth('create')">＋ Créer un compte</button><button class="b sec" onclick="logout()">Changer de compte</button></div></div>`}
+
+if(A.last==="guest")openSpace("guest");else render();
 if(!NATIVE&&location.protocol.startsWith("http")){
  if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
  try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
