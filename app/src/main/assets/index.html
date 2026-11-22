@@ -232,14 +232,15 @@ function vDonnees(){
  • Les captures d'écran sont bloquées pour éviter les fuites.<br>`:`• L'appli fonctionne <b>hors connexion</b> : les données ne sont jamais envoyées sur Internet, ni partagées, ni vendues.<br>
  • Elles sont enregistrées dans le stockage privé de l'appli sur ton iPhone.<br>
  • Supprimer l'appli de l'écran d'accueil efface aussi ses données.<br>`}
- • Aucune publicité, aucun compte, aucun traceur.<br>
+ • Aucune publicité, aucun traceur. Les comptes sont créés sur ce téléphone, sans serveur.<br>
+ • Un compte n'est partagé que si tu le décides, par fichier chiffré (AES-256) protégé par son mot de passe.<br>
  • Si tu suis des <b>mineurs</b>, obtiens l'accord des parents avant d'enregistrer leur nom (RGPD). Tu peux utiliser un prénom ou un surnom.</p></div>
  ${accountCard()}
  <div class="card"><h2>🔒 Code PIN</h2><p class="mut">${D.pinHash?"Un code PIN protège l'accès à l'application.":"Aucun code PIN. Ajoute-en un pour protéger les données."}</p>
  <div class="row"><button class="b" onclick="showPin('set1')">${D.pinHash?"Changer le PIN":"Définir un PIN"}</button>${D.pinHash?`<button class="b sec" onclick="remPin()">Retirer le PIN</button>`:""}</div></div>
  <div class="card"><h2>📦 Mes données (droit d'accès)</h2><p class="mut">Exporte toutes les données dans un fichier texte que tu peux garder.</p><button class="b sec" style="width:100%" onclick="exportData()">📤 Exporter mes données</button></div>
  <div class="card"><h2>🗑️ Droit à l'effacement</h2><p class="mut">Supprime définitivement tous les joueurs, stats et réglages de ce téléphone.</p><button class="b red" style="width:100%" onclick="wipe()">Effacer toutes les données</button></div>
- <p class="mut" style="text-align:center">Stat Player : Basket · v1.6</p>`;
+ <p class="mut" style="text-align:center">Stat Player : Basket · v1.7</p>`;
 }
 function exportData(){const c={...D};delete c.pinHash;const t=JSON.stringify(c,null,2);if(window.Android&&Android.share)Android.share(t);else if(navigator.share)navigator.share({text:t}).catch(()=>{});else{try{navigator.clipboard.writeText(t);toast("Données copiées")}catch(e){alert(t)}}}
 function wipe(){if(!confirm("Effacer TOUTES les données ? Action irréversible."))return;if(!confirm("Confirmer l'effacement définitif ?"))return;try{localStorage.removeItem(dkey())}catch(e){}delete memS[dkey()];D=blank();unlocked=true;sel=null;tab="joueurs";render();toast("Données effacées","var(--rd)")}
@@ -364,6 +365,7 @@ function showAuth(v,id){if(id)authAcc=id;const a=A.accounts.find(x=>x.id===authA
  if(v==="home")ov(`<h2 style="font-size:20px">🏀 Stat Player : Basket</h2><p class="mut" style="margin-top:0">Connecte-toi, crée un compte ou continue en invité. Les comptes sont enregistrés <b>uniquement sur ce téléphone</b>, protégés par mot de passe.</p>
  ${A.accounts.map(x=>`<button class="b sec" style="width:100%;margin-bottom:8px;text-align:left" onclick="showAuth('login','${x.id}')">👤 ${esc(x.name)}${x.email?` <span class="mut">· ${esc(x.email)}</span>`:""}${A.last===x.id?" ⭐":""}</button>`).join("")}
  <button class="b" style="width:100%;margin-bottom:8px" onclick="showAuth('create')">＋ Créer un compte</button>
+ <button class="b sec" style="width:100%;margin-bottom:8px" onclick="importDlg()">📥 Ouvrir un compte partagé</button>
  <button class="b sec" style="width:100%" onclick="openSpace('guest')">👋 Continuer en invité</button>
  <p class="mut" style="margin-bottom:0">En invité, rien à créer : tes données restent sur le téléphone, sans mot de passe. Tu pourras créer un compte plus tard et les y transférer.</p>`);
  else if(v==="login"){ov(`<h2>👤 ${esc(a.name)}</h2>${fld("lp","Mot de passe","password")}<button class="b" style="width:100%" onclick="doLogin()">Se connecter</button>
@@ -405,9 +407,62 @@ async function changePw(){const a=acc(),o=prompt("Mot de passe actuel");if(o===n
 async function newRec(){const a=acc(),o=prompt("Mot de passe du compte");if(o===null)return;if(await pbk(o,a.salt)!==a.pw)return toast("Mot de passe incorrect","var(--rd)");const c=recCode();a.rec=await pbk(norm(c),a.salt);saveA();showCode(c,"mot de passe","render()")}
 function accountCard(){const a=acc();return a?`<div class="card"><h2>👤 Mon compte</h2><p style="margin-top:0"><b>${esc(a.name)}</b>${a.email?`<br><span class="mut">${esc(a.email)}</span>`:""}<br><span class="mut">Créé le ${esc(a.created)} · stocké uniquement sur ce téléphone</span></p>
  <div class="row" style="margin-bottom:8px"><button class="b sec" onclick="changePw()">🔑 Mot de passe</button><button class="b sec" onclick="newRec()">🛟 Code de secours</button></div>
- <div class="row"><button class="b" onclick="logout()">Se déconnecter</button><button class="b red" onclick="delAcc('${a.id}')">Supprimer le compte</button></div></div>`
+ <div class="row" style="margin-bottom:8px"><button class="b" onclick="shareDlg()">🔗 Partager le compte</button><button class="b sec" onclick="importDlg()">📥 Recevoir</button></div>
+ <div class="row"><button class="b sec" onclick="logout()">Se déconnecter</button><button class="b red" onclick="delAcc('${a.id}')">Supprimer le compte</button></div></div>`
  :`<div class="card"><h2>👋 Mode invité</h2><p class="mut" style="margin-top:0">Tes données sont sur ce téléphone, sans mot de passe. Crée un compte pour les protéger (elles y seront transférées).</p>
- <div class="row"><button class="b" onclick="showAuth('create')">＋ Créer un compte</button><button class="b sec" onclick="logout()">Changer de compte</button></div></div>`}
+ <div class="row"><button class="b" onclick="showAuth('create')">＋ Créer un compte</button><button class="b sec" onclick="logout()">Changer de compte</button></div>
+ <p class="mut" style="margin-bottom:0">Pour partager les stats avec un autre coach, crée d'abord un compte : seuls les comptes peuvent être partagés.</p></div>`}
+
+/* ===== Partage d'un compte entre plusieurs téléphones (fichier chiffré AES-256) ===== */
+const TAG="STATPLAYER-COMPTE-1:";
+const b64=u=>{let s="";for(let i=0;i<u.length;i+=8192)s+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(s)};
+const ub64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function aesKey(pw,sl){const k=await crypto.subtle.importKey("raw",new TextEncoder().encode(pw),"PBKDF2",false,["deriveKey"]);return crypto.subtle.deriveKey({name:"PBKDF2",salt:sl,iterations:150000,hash:"SHA-256"},k,{name:"AES-GCM",length:256},false,["encrypt","decrypt"])}
+function shareDlg(){const a=acc();ov(`<h2>🔗 Partager « ${esc(a.name)} »</h2>
+ <p style="margin-top:0">Crée un <b>fichier chiffré</b> contenant ce compte (joueurs, stats, historique, notes). Envoie-le à l'autre coach (WhatsApp, e-mail, Drive…). Il l'ouvre dans <b>📥 Ouvrir un compte partagé</b> avec le <b>même mot de passe</b>.</p>
+ <p class="mut">🔒 Sans le mot de passe, le fichier est illisible. Donne le mot de passe de vive voix, pas dans le même message. Le code PIN de ce téléphone n'est pas partagé.</p>
+ ${fld("shp","Mot de passe du compte","password")}<button class="b" style="width:100%" onclick="doShare()">📤 Créer et envoyer le fichier</button><button class="b sec" style="width:100%;margin-top:8px" onclick="render()">Annuler</button>`)}
+async function doShare(){const a=acc(),pw=$("#shp").value;if(await pbk(pw,a.salt)!==a.pw)return toast("Mot de passe incorrect","var(--rd)");
+ try{commitTimes();save();const d=JSON.parse(JSON.stringify(D));delete d.pinHash;delete d.pinRec;delete d.pinSalt;
+  const s=rnd(16),iv=rnd(12),key=await aesKey(pw,s),ct=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},key,new TextEncoder().encode(JSON.stringify({v:1,acc:a,data:d,at:new Date().toISOString()}))));
+  const txt=TAG+b64(s)+"."+b64(iv)+"."+b64(ct),name="StatPlayer-"+norm(a.name).slice(0,20)+"-"+new Date().toISOString().slice(0,10)+".txt";
+  await sendFile(name,txt);render()}catch(e){toast("Partage impossible sur cet appareil","var(--rd)")}}
+async function sendFile(name,txt){
+ if(window.Android&&Android.shareFile){if(Android.shareFile(name,txt))return;return Android.share(txt)}
+ try{const f=new File([txt],name,{type:"text/plain"});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:name});return}}catch(e){if(e&&e.name==="AbortError")return}
+ try{const u=URL.createObjectURL(new Blob([txt],{type:"text/plain"})),l=document.createElement("a");l.href=u;l.download=name;document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),5000);toast("Fichier téléchargé")}catch(e){try{await navigator.clipboard.writeText(txt);toast("Copié : colle-le dans un message")}catch(x){}}}
+let impPayload=null;
+function importDlg(){impPayload=null;ov(`<h2>📥 Ouvrir un compte partagé</h2>
+ <p class="mut" style="margin-top:0">Choisis le fichier reçu (ou colle son contenu), puis entre le mot de passe du compte.</p>
+ <label class="b sec" style="display:block;text-align:center;margin-bottom:10px">📄 Choisir le fichier<input id="imf" type="file" accept=".txt,text/plain,*/*" style="display:none"></label>
+ <div id="imn" class="mut" style="margin:-4px 0 8px;text-align:center"></div>
+ <textarea id="imt" placeholder="…ou colle ici le contenu qui commence par STATPLAYER-COMPTE-1:" style="min-height:70px;margin-bottom:10px;font-size:12px"></textarea>
+ ${fld("imp","Mot de passe du compte","password")}<button class="b" style="width:100%" onclick="doImport()">Déverrouiller et importer</button><button class="b sec" style="width:100%;margin-top:8px" onclick="${cur?"render()":"showAuth('home')"}">Annuler</button>`);
+ $("#imf").onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{$("#imt").value=String(rd.result).trim();$("#imn").textContent="✅ "+f.name};rd.readAsText(f)}}
+async function doImport(){const t=$("#imt").value.replace(/\s/g,""),pw=$("#imp").value;
+ if(!t.startsWith(TAG))return toast("Fichier non reconnu","var(--rd)");
+ try{const[s,iv,ct]=t.slice(TAG.length).split(".").map(ub64);const key=await aesKey(pw,s);const o=JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:"AES-GCM",iv},key,ct)));if(o.v!==1)throw 0;impPayload=o}
+ catch(e){return toast("Mot de passe incorrect ou fichier abîmé","var(--rd)")}
+ const I=impPayload,ex=A.accounts.find(x=>x.id===I.acc.id);
+ if(!ex){const a={...I.acc};if(A.accounts.some(x=>x.name.toLowerCase()===a.name.toLowerCase()))a.name=(a.name+" (partagé)").slice(0,30);A.accounts.push(a);saveA();
+  try{localStorage.setItem(dkey(a.id),JSON.stringify(I.data))}catch(e){memS[dkey(a.id)]=I.data}
+  if(cur){commitTimes();save()}openSpace(a.id,true);return toast("Compte « "+a.name+" » ajouté")}
+ ov(`<h2>🔄 Ce compte existe déjà ici</h2><p style="margin-top:0">« ${esc(ex.name)} » est déjà sur ce téléphone. Fichier créé le ${esc(new Date(I.at).toLocaleString("fr-FR",{dateStyle:"short",timeStyle:"short"}))}.</p>
+ <button class="b gr" style="width:100%;margin-bottom:8px" onclick="applyImport('merge')">🔀 Fusionner (recommandé)</button>
+ <p class="mut" style="margin:0 0 10px">Ajoute les joueurs, matchs enregistrés et notes reçus, sans rien supprimer ici. Le match en cours de ce téléphone est conservé.</p>
+ <button class="b red" style="width:100%;margin-bottom:8px" onclick="applyImport('replace')">♻️ Remplacer tout par le fichier</button>
+ <button class="b sec" style="width:100%" onclick="${cur?"render()":"showAuth('home')"}">Annuler</button>`)}
+function mergeData(L,I){L.players=L.players||[];(I.players||[]).forEach(p=>{const x=L.players.find(q=>q.id===p.id);if(x){x.name=p.name;x.num=p.num}else L.players.push(p)});
+ L.history=L.history||[];(I.history||[]).forEach(m=>{const x=L.history.find(q=>q.id===m.id);if(x){Object.assign(x.players,m.players);x.date=m.date;x.opp=m.opp}else L.history.push(m)});
+ L.obs=L.obs||[];(I.obs||[]).forEach(o=>{if(!L.obs.some(q=>q.id===o.id))L.obs.push(o)});L.consent=L.consent||I.consent;return L}
+function applyImport(mode){const I=impPayload,id=I.acc.id;if(mode==="replace"&&!confirm("Remplacer toutes les données de ce compte sur ce téléphone par celles du fichier ?"))return;
+ if(cur&&cur!==id){commitTimes();save()}
+ const L=cur===id?D:(load(id)||blank());let N;
+ if(mode==="merge")N=mergeData(L,I.data);else{N=JSON.parse(JSON.stringify(I.data));N.pinHash=L.pinHash;N.pinRec=L.pinRec;N.pinSalt=L.pinSalt}
+ if(!N.history)N.history=[];if(!N.obs)N.obs=[];
+ try{localStorage.setItem(dkey(id),JSON.stringify(N))}catch(e){memS[dkey(id)]=N}
+ if(cur===id){D=N;unlocked=true;tab="joueurs";render()}else openSpace(id,true);
+ toast(mode==="merge"?"Données fusionnées":"Données remplacées");impPayload=null}
 
 if(A.last==="guest")openSpace("guest");else render();
 if(!NATIVE&&location.protocol.startsWith("http")){
