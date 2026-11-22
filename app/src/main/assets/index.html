@@ -78,8 +78,10 @@ const KEY="statplayer_v1";
 let mem=null;
 function load(){try{const s=localStorage.getItem(KEY);if(s)return JSON.parse(s)}catch(e){}return mem}
 function save(){mem=D;try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){}}
-const blank=()=>({consent:false,pinHash:null,players:[],match:{name:"",opp:"",date:new Date().toISOString().slice(0,10)},stats:{},time:{},onCourt:{},clock:{run:false,start:0,el:0},log:[]});
+const blank=()=>({consent:false,pinHash:null,players:[],match:{name:"",opp:"",date:new Date().toISOString().slice(0,10)},stats:{},time:{},onCourt:{},clock:{run:false,start:0,el:0},log:[],history:[]});
 let D=load()||blank();
+if(!D.history)D.history=[];
+let fp=null;
 let tab="joueurs",sel=null,unlocked=!D.pinHash;
 
 const ST=[
@@ -115,8 +117,8 @@ function render(){
  if(!D.consent)return showConsent();
  if(!unlocked)return showPin("unlock");
  $("#ov").classList.add("hid");
- document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.t===tab));
- ({joueurs:vJoueurs,match:vMatch,temps:vTemps,stats:vStats,donnees:vDonnees})[tab]();
+ document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.t===(tab==="fiche"?"joueurs":tab)));
+ ({joueurs:vJoueurs,match:vMatch,temps:vTemps,stats:vStats,donnees:vDonnees,fiche:vFiche})[tab]();
 }
 
 /* ===== Joueurs ===== */
@@ -126,14 +128,14 @@ function vJoueurs(){
  <div class="row"><input id="pn" placeholder="Nom du joueur" maxlength="40" style="flex:3"><input id="pnum" placeholder="N°" inputmode="numeric" maxlength="2" style="flex:1"></div>
  <button class="b" style="width:100%;margin-top:10px" onclick="addP()">＋ Ajouter</button></div>
  <div class="card"><h2>Effectif (${D.players.length})</h2>
- ${D.players.length?D.players.map(p=>`<div class="pl"><div class="num">${esc(p.num||"–")}</div><div class="nm">${esc(p.name)}<div class="mut">${pts(S(p.id))} pts · ${fmt(ptime(p.id))} jouées</div></div>
+ ${D.players.length?D.players.map(p=>`<div class="pl"><div class="num">${esc(p.num||"–")}</div><div class="nm" onclick="openFiche('${p.id}')">${esc(p.name)} <span style="color:var(--or)">›</span><div class="mut">${histOf(p.id).length} match(s) enregistré(s) · ${pts(S(p.id))} pts en cours</div></div>
  <button class="ico" onclick="renP('${p.id}')">✏️</button><button class="ico" onclick="delP('${p.id}')">🗑️</button></div>`).join(""):`<p class="mut">Aucun joueur. Ajoute ton effectif ci-dessus.</p>`}</div>`;
  $("#pn").onkeydown=e=>{if(e.key==="Enter")addP()};
 }
 function addP(){const n=$("#pn").value.trim();if(!n)return toast("Entre un nom","var(--rd)");
  D.players.push({id:"p"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),name:n,num:$("#pnum").value.replace(/\D/g,"")});save();toast("Joueur ajouté");vJoueurs();$("#pn").focus()}
 function renP(id){const p=D.players.find(x=>x.id===id);const n=prompt("Nom du joueur",p.name);if(n&&n.trim()){p.name=n.trim().slice(0,40);const nu=prompt("Numéro",p.num||"");if(nu!==null)p.num=nu.replace(/\D/g,"").slice(0,2);save();render()}}
-function delP(id){if(!confirm("Supprimer ce joueur et toutes ses statistiques ?"))return;D.players=D.players.filter(p=>p.id!==id);delete D.stats[id];delete D.time[id];delete D.onCourt[id];D.log=D.log.filter(l=>l.id!==id);if(sel===id)sel=null;save();render()}
+function delP(id){if(!confirm("Supprimer ce joueur et toutes ses statistiques ?"))return;D.players=D.players.filter(p=>p.id!==id);delete D.stats[id];delete D.time[id];delete D.onCourt[id];D.log=D.log.filter(l=>l.id!==id);D.history.forEach(m=>delete m.players[id]);D.history=D.history.filter(m=>Object.keys(m.players).length);if(sel===id)sel=null;save();render()}
 
 /* ===== Match (saisie stats) ===== */
 function vMatch(){
@@ -144,7 +146,7 @@ function vMatch(){
  $("#app").innerHTML=`<div class="card"><div class="row"><input id="mo" placeholder="Adversaire" value="${esc(D.match.opp)}"><input id="md" type="date" value="${esc(D.match.date)}"></div>
  <div class="mut" style="margin-top:8px">Score équipe : <b style="color:var(--or);font-size:16px">${team} pts</b> · Chrono ${fmt(clockEl())} ${D.clock.run?"▶️":"⏸️"}</div></div>
  <div class="card"><h2>Joueur</h2><div class="chips">${D.players.map(x=>`<button class="chip ${x.id===sel?"on":""}" onclick="sel='${x.id}';vMatch()">${x.num?"#"+esc(x.num)+" ":""}${esc(x.name)}${D.onCourt[x.id]?" 🟢":""}</button>`).join("")}</div></div>
- <div class="card"><h2>${esc(p.name)}</h2>
+ <div class="card"><h2 style="display:flex;justify-content:space-between;align-items:center">${esc(p.name)}<button class="chip" onclick="openFiche('${p.id}')">📈 Fiche (${histOf(p.id).length})</button></h2>
  <div class="score"><div><b>${pts(s)}</b><span>Points</span></div><div><b>${s.reb}</b><span>Rebonds</span></div><div><b>${s.pas}</b><span>Passes</span></div><div><b>${s.lfR}/${lfT}</b><span>LF</span></div>
  <div><b>${s.ctr}</b><span>Contres</span></div><div><b>${s.def}</b><span>Déf. réussies</span></div><div><b>${s.per}</b><span>Pertes</span></div><div><b style="color:${s.fau>=5?"var(--rd)":"inherit"}">${s.fau}</b><span>Fautes</span></div></div>
  ${s.fau>=5?`<p style="color:var(--rd);margin:8px 0 0;font-weight:700">⚠️ 5 fautes – joueur éliminé</p>`:""}</div>
@@ -155,7 +157,7 @@ function vMatch(){
  $("#mo").onchange=e=>{D.match.opp=e.target.value.slice(0,40);save()};
  $("#md").onchange=e=>{D.match.date=e.target.value;save()};
 }
-function rec(k){S(sel)[k]++;D.log.push({id:sel,k,t:fmt(clockEl())});save();vib();toast("+1 "+LAB[k]);vMatch()}
+function rec(k){D.dirty=true;S(sel)[k]++;D.log.push({id:sel,k,t:fmt(clockEl())});save();vib();toast("+1 "+LAB[k]);vMatch()}
 function undo(){const l=D.log.pop();if(!l)return toast("Rien à annuler","var(--line)");const s=S(l.id);if(s[l.k]>0)s[l.k]--;save();toast("Annulé : "+LAB[l.k],"var(--line)");vMatch()}
 function minus(){const ch=prompt("Retirer 1 à quelle stat ?\n"+ST.map((t,i)=>(i+1)+". "+LAB[t.k]).join("\n"));const i=parseInt(ch)-1;if(!(i>=0&&i<ST.length))return;const k=ST[i].k,s=S(sel);if(s[k]>0){s[k]--;for(let j=D.log.length-1;j>=0;j--)if(D.log[j].id===sel&&D.log[j].k===k){D.log.splice(j,1);break}save();toast("−1 "+LAB[k],"var(--line)")}vMatch()}
 
@@ -188,12 +190,13 @@ function vStats(){
  <div class="card"><h2>Feuille de stats</h2><div class="tw"><table><tr><th>Joueur</th><th>Min</th><th>Pts</th><th>LF</th><th>Reb</th><th>Ctr</th><th>Pas</th><th>Déf</th><th>Pdb</th><th>F</th><th>Éval</th></tr>
  ${rows.map(({p,s})=>`<tr><td>${p.num?"#"+esc(p.num)+" ":""}${esc(p.name)}</td><td>${fmt(ptime(p.id))}</td><td><b>${pts(s)}</b></td><td>${s.lfR}/${s.lfR+s.lfM}</td><td>${s.reb}</td><td>${s.ctr}</td><td>${s.pas}</td><td>${s.def}</td><td>${s.per}</td><td>${s.fau}</td><td>${ev(s)}</td></tr>`).join("")}</table></div>
  <p class="mut" style="margin:8px 0 0">Pdb = pertes de balle · Éval = pts + reb + passes + contres + déf. réussies − pertes − fautes − LF ratés</p></div>
+ <button class="b gr" style="width:100%;margin-bottom:8px" onclick="saveDlg()">💾 Enregistrer les stats des joueurs sélectionnés</button>${D.curHist?`<p class="mut" style="margin:0 0 8px;text-align:center">✅ Match enregistré — un nouvel enregistrement le met à jour</p>`:""}
  <div class="row"><button class="b" onclick="shareStats()">📤 Partager le bilan</button><button class="b red" onclick="newMatch()">🆕 Nouveau match</button></div>`;
 }
 function statsText(){let t=`🏀 Stat Player : Basket\n${D.match.opp?"Match vs "+D.match.opp+" – ":""}${D.match.date}\n\n`;
  D.players.forEach(p=>{const s=S(p.id);t+=`${p.num?"#"+p.num+" ":""}${p.name} : ${pts(s)} pts, ${s.reb} reb, ${s.pas} passes, ${s.ctr} ctr, ${s.def} déf, ${s.per} pertes, ${s.fau} F, LF ${s.lfR}/${s.lfR+s.lfM}, ${fmt(ptime(p.id))} min\n`});return t}
 function shareStats(){const t=statsText();if(window.Android&&Android.share){Android.share(t)}else if(navigator.share){navigator.share({text:t}).catch(()=>{})}else{try{navigator.clipboard.writeText(t);toast("Bilan copié")}catch(e){alert(t)}}}
-function newMatch(){if(!confirm("Commencer un nouveau match ? Les stats et temps de jeu seront remis à zéro (les joueurs sont conservés)."))return;D.stats={};D.time={};D.onCourt={};D.log=[];D.clock={run:false,start:0,el:0};D.match={name:"",opp:"",date:new Date().toISOString().slice(0,10)};save();toast("Nouveau match prêt");render()}
+function newMatch(){if(D.dirty&&!confirm("⚠️ Les stats de ce match n'ont pas été enregistrées. Elles seront perdues. Continuer ?"))return;if(!confirm("Commencer un nouveau match ? Les stats et temps de jeu seront remis à zéro (les joueurs et l'historique sont conservés)."))return;D.dirty=false;D.curHist=null;D.stats={};D.time={};D.onCourt={};D.log=[];D.clock={run:false,start:0,el:0};D.match={name:"",opp:"",date:new Date().toISOString().slice(0,10)};save();toast("Nouveau match prêt");render()}
 
 /* ===== Protection des données ===== */
 function vDonnees(){
@@ -210,7 +213,7 @@ function vDonnees(){
  <div class="row"><button class="b" onclick="showPin('set1')">${D.pinHash?"Changer le PIN":"Définir un PIN"}</button>${D.pinHash?`<button class="b sec" onclick="remPin()">Retirer le PIN</button>`:""}</div></div>
  <div class="card"><h2>📦 Mes données (droit d'accès)</h2><p class="mut">Exporte toutes les données dans un fichier texte que tu peux garder.</p><button class="b sec" style="width:100%" onclick="exportData()">📤 Exporter mes données</button></div>
  <div class="card"><h2>🗑️ Droit à l'effacement</h2><p class="mut">Supprime définitivement tous les joueurs, stats et réglages de ce téléphone.</p><button class="b red" style="width:100%" onclick="wipe()">Effacer toutes les données</button></div>
- <p class="mut" style="text-align:center">Stat Player : Basket · v1.1</p>`;
+ <p class="mut" style="text-align:center">Stat Player : Basket · v1.2</p>`;
 }
 function exportData(){const c={...D};delete c.pinHash;const t=JSON.stringify(c,null,2);if(window.Android&&Android.share)Android.share(t);else if(navigator.share)navigator.share({text:t}).catch(()=>{});else{try{navigator.clipboard.writeText(t);toast("Données copiées")}catch(e){alert(t)}}}
 function wipe(){if(!confirm("Effacer TOUTES les données ? Action irréversible."))return;if(!confirm("Confirmer l'effacement définitif ?"))return;try{localStorage.removeItem(KEY)}catch(e){}mem=null;D=blank();unlocked=true;sel=null;tab="joueurs";render();toast("Données effacées","var(--rd)")}
@@ -235,6 +238,49 @@ async function pk(n){if(pinBuf.length>=4)return;pinBuf+=n;drawPin();if(pinBuf.le
 
 /* Verrouillage auto quand l'appli passe en arrière-plan */
 document.addEventListener("visibilitychange",()=>{if(document.hidden){commitTimes();save();if(D.pinHash){unlocked=false}}else if(D.pinHash&&!unlocked)render()});
+/* ===== Enregistrement des stats par joueur ===== */
+const KS=["p2","p3","lfR","lfM","reb","ctr","pas","def","per","fau"];
+const played=id=>KS.some(k=>S(id)[k]>0)||ptime(id)>0;
+function histOf(id){return D.history.filter(m=>m.players[id]).map(m=>({m,s:m.players[id]})).sort((a,b)=>a.m.date<b.m.date?1:-1)}
+function saveDlg(){
+ if(!D.players.length)return toast("Aucun joueur","var(--rd)");
+ const o=$("#ov");o.classList.remove("hid");
+ o.innerHTML=`<div class="card"><h2>💾 Enregistrer les stats</h2><p class="mut" style="margin-top:0">Coche les joueurs dont tu veux enregistrer les stats dans leur fiche.</p>
+ <div class="row" style="margin-bottom:8px"><button class="b sec" onclick="document.querySelectorAll('.ck').forEach(c=>c.checked=true)">Tout cocher</button><button class="b sec" onclick="document.querySelectorAll('.ck').forEach(c=>c.checked=false)">Tout décocher</button></div>
+ ${D.players.map(p=>`<label class="pl" style="cursor:pointer"><input type="checkbox" class="ck" value="${p.id}" ${played(p.id)?"checked":""} style="width:24px;min-height:24px;height:24px;flex:none;-webkit-appearance:checkbox;appearance:checkbox;accent-color:var(--or)"><div class="num">${esc(p.num||"–")}</div><div class="nm">${esc(p.name)}<div class="mut">${pts(S(p.id))} pts · ${S(p.id).reb} reb · ${fmt(ptime(p.id))}</div></div></label>`).join("")}
+ <div class="row" style="margin-top:8px"><button class="b sec" onclick="render()">Annuler</button><button class="b gr" onclick="doSave()">Enregistrer</button></div></div>`;
+}
+function doSave(){
+ const ids=[...document.querySelectorAll(".ck:checked")].map(c=>c.value);
+ if(!ids.length)return toast("Sélectionne au moins un joueur","var(--yl)");
+ commitTimes();
+ let m=D.curHist&&D.history.find(x=>x.id===D.curHist);
+ if(!m){m={id:"m"+Date.now().toString(36),players:{}};D.history.push(m);D.curHist=m.id}
+ m.date=D.match.date;m.opp=D.match.opp;
+ ids.forEach(id=>{m.players[id]={...S(id),min:ptime(id)}});
+ D.dirty=false;save();toast(`Stats enregistrées pour ${ids.length} joueur${ids.length>1?"s":""}`);render();
+}
+function openFiche(id){fp=id;tab="fiche";render()}
+function vFiche(){
+ const p=D.players.find(x=>x.id===fp);if(!p){tab="joueurs";return render()}
+ const H=histOf(fp),n=H.length,T={min:0};KS.forEach(k=>T[k]=0);
+ H.forEach(({s})=>{KS.forEach(k=>T[k]+=s[k]||0);T.min+=s.min||0});
+ const av=v=>n?(v/n).toFixed(1).replace(".0",""):"0",lfT=T.lfR+T.lfM;
+ $("#app").innerHTML=`<button class="b sec" style="margin-bottom:12px" onclick="tab='joueurs';render()">‹ Joueurs</button>
+ <div class="card"><div class="row" style="gap:12px"><div class="num" style="width:56px;height:56px;font-size:22px;flex:none">${esc(p.num||"–")}</div><div><h2 style="margin:0;font-size:20px">${esc(p.name)}</h2><div class="mut">${n} match${n>1?"s":""} enregistré${n>1?"s":""}</div></div></div></div>
+ <div class="card"><h2>📈 Moyennes par match</h2><div class="score">
+ <div><b>${av(pts(T))}</b><span>Points</span></div><div><b>${av(T.reb)}</b><span>Rebonds</span></div><div><b>${av(T.pas)}</b><span>Passes</span></div><div><b>${fmt(n?T.min/n:0)}</b><span>Temps</span></div>
+ <div><b>${av(T.ctr)}</b><span>Contres</span></div><div><b>${av(T.def)}</b><span>Déf. réussies</span></div><div><b>${av(T.per)}</b><span>Pertes</span></div><div><b>${av(T.fau)}</b><span>Fautes</span></div></div>
+ <p class="mut" style="margin:10px 0 0">Lancers francs : <b style="color:var(--txt)">${T.lfR}/${lfT}</b> ${lfT?`(${Math.round(T.lfR*100/lfT)} %)`:""} · Total : <b style="color:var(--txt)">${pts(T)} pts</b>, ${T.reb} reb, ${T.pas} passes</p></div>
+ <div class="card"><h2>📅 Matchs enregistrés</h2>${n?`<div class="tw"><table><tr><th>Match</th><th>Min</th><th>Pts</th><th>LF</th><th>Reb</th><th>Ctr</th><th>Pas</th><th>Déf</th><th>Pdb</th><th>F</th><th></th></tr>
+ ${H.map(({m,s})=>`<tr><td>${esc(m.date.slice(8,10)+"/"+m.date.slice(5,7))}${m.opp?"<br><span class='mut'>"+esc(m.opp)+"</span>":""}</td><td>${fmt(s.min||0)}</td><td><b>${pts(s)}</b></td><td>${s.lfR}/${s.lfR+s.lfM}</td><td>${s.reb}</td><td>${s.ctr}</td><td>${s.pas}</td><td>${s.def}</td><td>${s.per}</td><td>${s.fau}</td><td><button class="ico" style="font-size:15px;padding:2px" onclick="delHist('${m.id}')">🗑️</button></td></tr>`).join("")}</table></div>`:`<p class="mut">Aucun match enregistré. Dans l'onglet <b>Stats</b>, touche « Enregistrer les stats des joueurs sélectionnés ».</p>`}</div>
+ ${n?`<button class="b" style="width:100%" onclick="shareFiche()">📤 Partager la fiche</button>`:""}`;
+}
+function delHist(mid){if(!confirm("Retirer ce match de la fiche du joueur ?"))return;const m=D.history.find(x=>x.id===mid);if(m){delete m.players[fp];if(!Object.keys(m.players).length){D.history=D.history.filter(x=>x!==m);if(D.curHist===mid)D.curHist=null}}save();vFiche()}
+function shareFiche(){const p=D.players.find(x=>x.id===fp),H=histOf(fp);let t=`🏀 Fiche de ${p.name}${p.num?" (#"+p.num+")":""} – ${H.length} match(s)\n\n`;
+ H.forEach(({m,s})=>{t+=`${m.date}${m.opp?" vs "+m.opp:""} : ${pts(s)} pts, ${s.reb} reb, ${s.pas} passes, ${s.ctr} ctr, ${s.def} déf, ${s.per} pertes, ${s.fau} F, LF ${s.lfR}/${s.lfR+s.lfM}, ${fmt(s.min||0)}\n`});
+ if(window.Android&&Android.share)Android.share(t);else if(navigator.share)navigator.share({text:t}).catch(()=>{});else{try{navigator.clipboard.writeText(t);toast("Fiche copiée")}catch(e){alert(t)}}}
+
 render();
 if(!NATIVE&&location.protocol.startsWith("http")){
  if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
