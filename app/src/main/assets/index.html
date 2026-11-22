@@ -149,7 +149,7 @@ function vJoueurs(){
  const st=D.ended?"🏁 Terminé":D.clock.run?"▶️ En cours":(D.clock.el||D.log.length)?"⏸️ En pause":"Pas encore commencé";
  $("#app").innerHTML=installHint()+`<div class="card" style="border:1px solid var(--or)"><h2>🏀 Match ${D.match.opp?"vs "+esc(D.match.opp):"en cours"}</h2>
  <p class="mut" style="margin:0 0 10px">${esc(D.match.date)} · ${st} · ${D.players.reduce((a,x)=>a+pts(S(x.id)),0)} pts · ${fmt(clockEl())}</p>
- <button class="b red" style="width:100%" onclick="newMatch()">🆕 Nouveau match</button></div>
+ <div class="row"><button class="b red" onclick="newMatch()">🆕 Nouveau match</button>${cur!=="guest"?`<button class="b gr" onclick="syncDlg()">🔄 Synchroniser</button>`:""}</div></div>
  <div class="card"><h2>Ajouter un joueur</h2>
  <div class="row"><input id="pn" placeholder="Nom du joueur" maxlength="40" style="flex:3"><input id="pnum" placeholder="N°" inputmode="numeric" maxlength="2" style="flex:1"></div>
  <button class="b" style="width:100%;margin-top:10px" onclick="addP()">＋ Ajouter</button></div>
@@ -241,6 +241,7 @@ function vDonnees(){
  • Elles sont enregistrées dans le stockage privé de l'appli sur ton iPhone.<br>
  • Supprimer l'appli de l'écran d'accueil efface aussi ses données.<br>`}
  • Aucune publicité, aucun traceur. Les comptes sont créés sur ce téléphone, sans serveur.<br>
+ • La synchronisation entre téléphones se fait par QR code, de téléphone à téléphone, sans Internet. Les QR codes sont chiffrés : seul un téléphone ayant le même compte peut les lire. L'appareil photo ne sert qu'à scanner ce QR code.<br>
  • Un compte n'est partagé que si tu le décides, par fichier chiffré (AES-256) protégé par son mot de passe.<br>
  • Si tu suis des <b>mineurs</b>, obtiens l'accord des parents avant d'enregistrer leur nom (RGPD). Tu peux utiliser un prénom ou un surnom.</p></div>
  ${accountCard()}
@@ -248,7 +249,7 @@ function vDonnees(){
  <div class="row"><button class="b" onclick="showPin('set1')">${D.pinHash?"Changer le PIN":"Définir un PIN"}</button>${D.pinHash?`<button class="b sec" onclick="remPin()">Retirer le PIN</button>`:""}</div></div>
  <div class="card"><h2>📦 Mes données (droit d'accès)</h2><p class="mut">Exporte toutes les données dans un fichier texte que tu peux garder.</p><button class="b sec" style="width:100%" onclick="exportData()">📤 Exporter mes données</button></div>
  <div class="card"><h2>🗑️ Droit à l'effacement</h2><p class="mut">Supprime définitivement tous les joueurs, stats et réglages de ce téléphone.</p><button class="b red" style="width:100%" onclick="wipe()">Effacer toutes les données</button></div>
- <p class="mut" style="text-align:center">Stat Player : Basket · v1.10</p>`;
+ <p class="mut" style="text-align:center">Stat Player : Basket · v1.11</p>`;
 }
 function exportData(){const c={...D};delete c.pinHash;const t=JSON.stringify(c,null,2);if(window.Android&&Android.share)Android.share(t);else if(navigator.share)navigator.share({text:t}).catch(()=>{});else{try{navigator.clipboard.writeText(t);toast("Données copiées")}catch(e){alert(t)}}}
 function wipe(){if(!confirm("Effacer TOUTES les données ? Action irréversible."))return;if(!confirm("Confirmer l'effacement définitif ?"))return;try{localStorage.removeItem(dkey())}catch(e){}delete memS[dkey()];D=blank();unlocked=true;sel=null;tab="joueurs";render();toast("Données effacées","var(--rd)")}
@@ -272,7 +273,7 @@ async function pk(n){if(pinBuf.length>=4)return;pinBuf+=n;drawPin();if(pinBuf.le
  else{if(pinBuf===pinFirst){D.pinHash=await hash(pinBuf);const c=recCode();D.pinSalt=salt();D.pinRec=await pbk(norm(c),D.pinSalt);unlocked=true;save();showCode(c,"code PIN","render()")}else{toast("Les codes ne correspondent pas","var(--rd)");pinMode="set1";pinBuf="";setTimeout(drawPin,200)}}}
 
 /* Verrouillage auto quand l'appli passe en arrière-plan */
-document.addEventListener("visibilitychange",()=>{if(!cur)return;if(document.hidden){commitTimes();save();if(D.pinHash){unlocked=false}}else if(D.pinHash&&!unlocked)render()});
+document.addEventListener("visibilitychange",()=>{if(!cur)return;if(document.hidden){stopSync();commitTimes();save();if(D.pinHash){unlocked=false}}else if(D.pinHash&&!unlocked)render()});
 /* ===== Enregistrement des stats par joueur ===== */
 const KS=["p2","p3","lfR","lfM","reb","ctr","pas","def","per","fau"];
 const played=id=>KS.some(k=>S(id)[k]>0)||ptime(id)>0;
@@ -416,6 +417,7 @@ async function changePw(){const a=acc(),o=prompt("Mot de passe actuel");if(o===n
 async function newRec(){const a=acc(),o=prompt("Mot de passe du compte");if(o===null)return;if(await pbk(o,a.salt)!==a.pw)return toast("Mot de passe incorrect","var(--rd)");const c=recCode();a.rec=await pbk(norm(c),a.salt);saveA();showCode(c,"mot de passe","render()")}
 function accountCard(){const a=acc();return a?`<div class="card"><h2>👤 Mon compte</h2><p style="margin-top:0"><b>${esc(a.name)}</b>${a.email?`<br><span class="mut">${esc(a.email)}</span>`:""}<br><span class="mut">Créé le ${esc(a.created)} · stocké uniquement sur ce téléphone</span></p>
  <div class="row" style="margin-bottom:8px"><button class="b sec" onclick="changePw()">🔑 Mot de passe</button><button class="b sec" onclick="newRec()">🛟 Code de secours</button></div>
+ <button class="b gr" style="width:100%;margin-bottom:8px" onclick="syncDlg()">🔄 Synchroniser avec un autre téléphone (QR code)</button>
  <div class="row" style="margin-bottom:8px"><button class="b" onclick="shareDlg()">🔗 Partager le compte</button><button class="b sec" onclick="importDlg()">📥 Recevoir</button></div>
  <div class="row"><button class="b sec" onclick="logout()">Se déconnecter</button><button class="b red" onclick="delAcc('${a.id}')">Supprimer le compte</button></div></div>`
  :`<div class="card"><h2>👋 Mode invité</h2><p class="mut" style="margin-top:0">Tes données sont sur ce téléphone, sans mot de passe. Crée un compte pour les protéger (elles y seront transférées).</p>
@@ -462,9 +464,14 @@ async function doImport(){const t=$("#imt").value.replace(/\s/g,""),pw=$("#imp")
  <p class="mut" style="margin:0 0 10px">Ajoute les joueurs, matchs enregistrés et notes reçus, sans rien supprimer ici. Le match en cours de ce téléphone est conservé.</p>
  <button class="b red" style="width:100%;margin-bottom:8px" onclick="applyImport('replace')">♻️ Remplacer tout par le fichier</button>
  <button class="b sec" style="width:100%" onclick="${cur?"render()":"showAuth('home')"}">Annuler</button>`)}
-function mergeData(L,I){L.players=L.players||[];(I.players||[]).forEach(p=>{const x=L.players.find(q=>q.id===p.id);if(x){x.name=p.name;x.num=p.num}else L.players.push(p)});
- L.history=L.history||[];(I.history||[]).forEach(m=>{const x=L.history.find(q=>q.id===m.id);if(x){Object.assign(x.players,m.players);x.date=m.date;x.opp=m.opp}else L.history.push(m)});
- L.obs=L.obs||[];(I.obs||[]).forEach(o=>{if(!L.obs.some(q=>q.id===o.id))L.obs.push(o)});L.consent=L.consent||I.consent;return L}
+/* Fusion : rien n'est supprimé. Un même match (même date + même adversaire) saisi sur 2 téléphones est regroupé ;
+   pour un joueur présent des deux côtés, on garde la feuille la plus complète. */
+const acts=s=>KS.reduce((a,k)=>a+(s[k]||0),0)+(s.min||0)/60000;
+function mergeData(L,I,cnt){cnt=cnt||{p:0,m:0,o:0,u:0};L.players=L.players||[];(I.players||[]).forEach(p=>{const x=L.players.find(q=>q.id===p.id);if(x){x.name=p.name;x.num=p.num}else{L.players.push(p);cnt.p++}});
+ L.history=L.history||[];(I.history||[]).forEach(m=>{const k=x=>x.date+"|"+norm(x.opp||"");let x=L.history.find(q=>q.id===m.id)||L.history.find(q=>k(q)===k(m));
+  if(!x){L.history.push(JSON.parse(JSON.stringify(m)));cnt.m++;return}
+  for(const id in m.players){const a=x.players[id],b=m.players[id];if(!a||acts(b)>acts(a)){x.players[id]=b;cnt.u++}}});
+ L.obs=L.obs||[];(I.obs||[]).forEach(o=>{if(!L.obs.some(q=>q.id===o.id)){L.obs.push(o);cnt.o++}});L.consent=L.consent||I.consent;L._cnt=cnt;return L}
 function applyImport(mode){const I=impPayload,id=I.acc.id;if(mode==="replace"&&!confirm("Remplacer toutes les données de ce compte sur ce téléphone par celles du fichier ?"))return;
  if(cur&&cur!==id){commitTimes();save()}
  const L=cur===id?D:(load(id)||blank());let N;
@@ -508,6 +515,68 @@ function exportAs(f){commitTimes();const m=exScope!=="season",se=exScope!=="matc
   const fr=document.createElement("iframe");fr.style.cssText="position:fixed;width:0;height:0;border:0;right:0;bottom:0";document.body.appendChild(fr);fr.contentDocument.open();fr.contentDocument.write(html);fr.contentDocument.close();
   setTimeout(()=>{try{fr.contentWindow.focus();fr.contentWindow.print()}catch(e){sendFile(exName("html"),html,"text/html")}setTimeout(()=>fr.remove(),60000)},400);toast("Imprimante : choisis « Enregistrer en PDF »");return render()}
 }
+
+/* ===== Synchronisation par QR code (sans Internet, chiffrée) ===== */
+const libs={};
+function loadLib(src){return libs[src]||(libs[src]=new Promise((ok,ko)=>{const s=document.createElement("script");s.src=src;s.onload=ok;s.onerror=()=>{delete libs[src];ko()};document.head.appendChild(s)}))}
+async function syncKey(){const a=acc(),d=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(a.pw+":qr-sync:"+a.id));return crypto.subtle.importKey("raw",d,"AES-GCM",false,["encrypt","decrypt"])}
+async function zip(u,dir){if(typeof CompressionStream==="undefined")return null;const st=new Blob([u]).stream().pipeThrough(dir?new CompressionStream("deflate"):new DecompressionStream("deflate"));return new Uint8Array(await new Response(st).arrayBuffer())}
+async function syncFrames(){commitTimes();save();
+ const raw=new TextEncoder().encode(JSON.stringify({v:1,acc:cur,at:new Date().toISOString(),data:{players:D.players,history:D.history,obs:D.obs}}));
+ const z=await zip(raw,true),body=z?new Uint8Array([1,...z]):new Uint8Array([0,...raw]),iv=rnd(12);
+ const ct=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},await syncKey(),body)),all=new Uint8Array(12+ct.length);all.set(iv);all.set(ct,12);
+ const s=b64(all),sid=[...rnd(3)].map(x=>x.toString(36)).join("").slice(0,4),CH=350,N=Math.ceil(s.length/CH),F=[];
+ for(let i=0;i<N;i++)F.push(`SPQ1|${sid}|${i}|${N}|`+s.slice(i*CH,(i+1)*CH));return F}
+function drawQR(cv,txt){const q=qrcode(0,"L");q.addData(txt);q.make();const n=q.getModuleCount(),sc=Math.max(2,Math.floor(320/(n+8))),S=(n+8)*sc;cv.width=cv.height=S;
+ const c=cv.getContext("2d");c.fillStyle="#fff";c.fillRect(0,0,S,S);c.fillStyle="#000";for(let y=0;y<n;y++)for(let x=0;x<n;x++)if(q.isDark(y,x))c.fillRect((x+4)*sc,(y+4)*sc,sc,sc)}
+let qrTimer=null,camStream=null,scanLoop=null,parts=null,lastSync=null;
+function stopSync(){clearInterval(qrTimer);qrTimer=null;cancelAnimationFrame(scanLoop);scanLoop=null;if(camStream){camStream.getTracks().forEach(t=>t.stop());camStream=null}}
+function closeSync(){stopSync();render()}
+function syncDlg(){stopSync();if(cur==="guest")return toast("Crée d'abord un compte pour synchroniser","var(--yl)");
+ ov(`<h2>🔄 Synchroniser deux téléphones</h2>
+ <p style="margin-top:0">Pour <b>le même compte</b> (« ${esc(acc().name)} ») sur deux téléphones, côte à côte, <b>sans Internet</b>.</p>
+ <p class="mut">1. Un téléphone <b>montre</b> son QR code, l'autre le <b>scanne</b> : il reçoit les joueurs, matchs enregistrés et notes.<br>2. Puis on inverse, pour que les deux aient tout.<br>Pense à <b>enregistrer les stats du match</b> (onglet Stats) avant de synchroniser.<br>L'autre téléphone n'a pas encore le compte ? Utilise d'abord <b>🔗 Partager le compte</b>.</p>
+ <button class="b" style="width:100%;margin-bottom:8px" onclick="showQR()">📱 Montrer mon QR code</button>
+ <button class="b gr" style="width:100%;margin-bottom:8px" onclick="scanQR()">📷 Scanner le QR code de l'autre</button>
+ <button class="b sec" style="width:100%" onclick="closeSync()">Fermer</button>`)}
+async function showQR(){stopSync();let F;try{await loadLib("qrcode.js");F=await syncFrames()}catch(e){return toast("QR code impossible sur cet appareil","var(--rd)")}
+ ov(`<h2>📱 Mon QR code</h2><p class="mut" style="margin-top:0">Sur l'autre téléphone : <b>🔄 Synchroniser → 📷 Scanner</b>, puis vise ce code${F.length>1?" jusqu'à ce que tous les codes soient reçus":""}. Monte la luminosité de l'écran.</p>
+ <div style="background:#fff;border-radius:12px;padding:8px;text-align:center"><canvas id="qrc" style="width:100%;max-width:340px;image-rendering:pixelated"></canvas></div>
+ <p id="qri" style="text-align:center;font-weight:700;margin:8px 0"></p>
+ <div class="row"><button class="b gr" onclick="scanQR()">📷 Scanner l'autre</button><button class="b sec" onclick="closeSync()">Terminé</button></div>`);
+ let i=0;const step=()=>{const cv=$("#qrc");if(!cv)return stopSync();drawQR(cv,F[i]);$("#qri").textContent=F.length>1?`Code ${i+1} / ${F.length}`:"";i=(i+1)%F.length};step();if(F.length>1)qrTimer=setInterval(step,450)}
+async function scanQR(){stopSync();parts=null;
+ ov(`<h2>📷 Scanner le QR code</h2><p class="mut" style="margin-top:0">Vise le QR code affiché sur l'autre téléphone.</p>
+ <div style="position:relative;border-radius:12px;overflow:hidden;background:#000"><video id="qrv" playsinline muted autoplay style="width:100%;display:block"></video><div style="position:absolute;inset:12%;border:3px solid var(--or);border-radius:12px;pointer-events:none"></div></div>
+ <div style="height:10px;background:#0b1222;border-radius:5px;margin:12px 0 6px;overflow:hidden"><div id="qrp" style="height:100%;width:0;background:var(--gr);transition:.2s"></div></div>
+ <p id="qrs" class="mut" style="text-align:center;margin:0 0 10px">Recherche d'un QR code…</p>
+ <div class="row"><button class="b" onclick="showQR()">📱 Montrer le mien</button><button class="b sec" onclick="closeSync()">Annuler</button></div>`);
+ try{await loadLib("jsQR.js")}catch(e){return toast("Lecteur QR indisponible","var(--rd)")}
+ try{camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:720}},audio:false})}
+ catch(e){$("#qrs").innerHTML=`<b style="color:var(--rd)">Caméra indisponible.</b> Autorise l'appareil photo pour Stat Player dans les réglages du téléphone, puis réessaie.`;return}
+ const v=$("#qrv");v.srcObject=camStream;try{await v.play()}catch(e){}
+ const cv=document.createElement("canvas"),cx=cv.getContext("2d",{willReadFrequently:true});let last=0,busy=false,det=null;
+ try{if("BarcodeDetector" in window&&(await BarcodeDetector.getSupportedFormats()).includes("qr_code"))det=new BarcodeDetector({formats:["qr_code"]})}catch(e){det=null}
+ const loop=async t=>{scanLoop=requestAnimationFrame(loop);if(busy||t-last<100||!v.videoWidth)return;last=t;busy=true;
+  try{if(det){const c=await det.detect(v);c.forEach(x=>x.rawValue&&syncFeed(x.rawValue))}
+   else{const sc=Math.min(1,1280/Math.max(v.videoWidth,v.videoHeight));cv.width=v.videoWidth*sc|0;cv.height=v.videoHeight*sc|0;cx.imageSmoothingEnabled=false;cx.drawImage(v,0,0,cv.width,cv.height);
+    const r=jsQR(cx.getImageData(0,0,cv.width,cv.height).data,cv.width,cv.height,{inversionAttempts:"dontInvert"});if(r&&r.data)syncFeed(r.data)}}catch(e){det=null}
+  busy=false};
+ scanLoop=requestAnimationFrame(loop)}
+function syncFeed(t){const m=/^SPQ1\|(\w+)\|(\d+)\|(\d+)\|(.*)$/.exec(t);if(!m){const s=$("#qrs");if(s)s.textContent="Ce QR code ne vient pas de Stat Player";return}
+ const[,sid,i,n,c]=m;if(!parts||parts.sid!==sid)parts={sid,n:+n,got:{}};if(parts.got[i]!=null)return;parts.got[i]=c;try{navigator.vibrate&&navigator.vibrate(15)}catch(e){}
+ const k=Object.keys(parts.got).length,p=$("#qrp"),s=$("#qrs");if(p)p.style.width=Math.round(k*100/parts.n)+"%";if(s)s.textContent=`${k} / ${parts.n} code${parts.n>1?"s":""} reçu${k>1?"s":""}…`;
+ if(k===parts.n){const all=[...Array(parts.n).keys()].map(x=>parts.got[x]).join("");parts=null;stopSync();applySync(all)}}
+async function applySync(s){let o;try{const u=ub64(s),body=new Uint8Array(await crypto.subtle.decrypt({name:"AES-GCM",iv:u.slice(0,12)},await syncKey(),u.slice(12)));
+  const raw=body[0]===1?await zip(body.slice(1),false):body.slice(1);o=JSON.parse(new TextDecoder().decode(raw))}
+ catch(e){ov(`<h2>❌ Synchronisation impossible</h2><p>Ce QR code vient d'un <b>autre compte</b> (ou d'un compte dont le mot de passe a changé). Les deux téléphones doivent être connectés au <b>même compte</b>.</p><p class="mut">Pour installer le compte sur l'autre téléphone : <b>🔗 Partager le compte</b>.</p><div class="row"><button class="b" onclick="syncDlg()">Réessayer</button><button class="b sec" onclick="closeSync()">Fermer</button></div>`);return}
+ if(o.acc!==cur)return toast("QR code d'un autre compte","var(--rd)");
+ mergeData(D,o.data);const c=D._cnt;delete D._cnt;save();lastSync=c;
+ ov(`<h2>✅ Synchronisé</h2><p style="margin-top:0">Reçu de l'autre téléphone :</p>
+ <div class="score" style="grid-template-columns:repeat(3,1fr);margin-bottom:10px"><div><b>+${c.p}</b><span>Joueurs</span></div><div><b>+${c.m}</b><span>Matchs</span></div><div><b>+${c.o}</b><span>Notes</span></div></div>
+ ${c.u?`<p class="mut" style="margin-top:0">${c.u} feuille(s) de joueur complétée(s) dans des matchs existants.</p>`:""}
+ <p>👉 Maintenant, montre <b>ton</b> QR code à l'autre téléphone pour qu'il reçoive aussi tes données.</p>
+ <button class="b" style="width:100%;margin-bottom:8px" onclick="showQR()">📱 Montrer mon QR code</button><button class="b sec" style="width:100%" onclick="closeSync()">Terminé</button>`)}
 
 if(A.last==="guest")openSpace("guest");else render();
 if(!NATIVE&&location.protocol.startsWith("http")){

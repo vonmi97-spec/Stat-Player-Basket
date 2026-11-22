@@ -14,7 +14,7 @@ jobs:
     environment: { name: github-pages, url: '${{ steps.d.outputs.page_url }}' }
     steps:
       - uses: actions/checkout@v4
-      - run: mkdir _site && cp app/src/main/assets/index.html web/* _site/
+      - run: mkdir _site && cp app/src/main/assets/* web/* _site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with: { path: _site }

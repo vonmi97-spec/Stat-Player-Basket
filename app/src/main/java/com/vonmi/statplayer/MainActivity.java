@@ -5,7 +5,10 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.view.WindowManager;
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.webkit.JavascriptInterface;
+import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -21,7 +24,8 @@ import java.io.FileOutputStream;
 public class MainActivity extends Activity {
     private WebView web;
     private ValueCallback<Uri[]> fileCb;
-    private static final int PICK = 42;
+    private static final int PICK = 42, CAM = 43;
+    private PermissionRequest camReq; // demande caméra en attente (scan QR code)
     private WebView printView; // gardée en mémoire pendant l'impression
 
     @Override
@@ -38,10 +42,27 @@ public class MainActivity extends Activity {
         s.setAllowFileAccessFromFileURLs(false);
         s.setAllowUniversalAccessFromFileURLs(false);
         s.setSaveFormData(false);
+        s.setMediaPlaybackRequiresUserGesture(false);
         web.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) { return true; } // aucune navigation externe
         });
         web.setWebChromeClient(new WebChromeClient() {
+            // Caméra : uniquement pour scanner le QR code de synchronisation, après accord de l'utilisateur
+            @Override
+            public void onPermissionRequest(final PermissionRequest req) {
+                runOnUiThread(() -> {
+                    boolean video = false;
+                    for (String r : req.getResources()) if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r)) video = true;
+                    if (!video) { req.deny(); return; }
+                    if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                        req.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
+                    } else {
+                        camReq = req;
+                        requestPermissions(new String[]{Manifest.permission.CAMERA}, CAM);
+                    }
+                });
+            }
+
             @Override
             public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb, FileChooserParams p) {
                 if (fileCb != null) fileCb.onReceiveValue(null);
@@ -58,6 +79,15 @@ public class MainActivity extends Activity {
         web.addJavascriptInterface(new PrintBridge(), "AndroidPrint");
         web.loadUrl("file:///android_asset/index.html");
         setContentView(web);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int req, String[] perms, int[] res) {
+        if (req == CAM && camReq != null) {
+            if (res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) camReq.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
+            else camReq.deny();
+            camReq = null;
+        } else super.onRequestPermissionsResult(req, perms, res);
     }
 
     @Override

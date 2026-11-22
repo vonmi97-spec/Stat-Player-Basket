@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Aucune permission demandée : pas d'Internet, pas de caméra, pas de localisation -->
+<!-- Pas d'Internet, pas de localisation. Caméra : uniquement pour scanner le QR code de synchronisation -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <application
         android:allowBackup="false"
         android:fullBackupContent="false"
