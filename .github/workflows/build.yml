@@ -1,0 +1,26 @@
+name: Build APK
+on:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.7' }
+      - run: gradle assembleRelease --no-daemon
+      - run: cp app/build/outputs/apk/release/app-release.apk StatPlayer-Basket.apk
+      - uses: actions/upload-artifact@v4
+        with: { name: StatPlayer-Basket-APK, path: StatPlayer-Basket.apk }
+      - uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Stat Player Basket v1.0.${{ github.run_number }}
+          files: StatPlayer-Basket.apk
+        env: { GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }

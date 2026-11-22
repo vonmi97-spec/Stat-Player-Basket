@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0f172a">
+<title>Stat Player : Basket</title>
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--line:#334155;--txt:#f1f5f9;--mut:#94a3b8;--or:#f97316;--gr:#22c55e;--rd:#ef4444;--bl:#3b82f6;--yl:#eab308;--pu:#a855f7}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:system-ui,-apple-system,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding-bottom:72px;user-select:none}
+header{position:sticky;top:0;z-index:5;background:#020617;padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:2px solid var(--or)}
+header h1{font-size:18px;margin:0;flex:1}header h1 span{color:var(--or)}
+.ico{background:none;border:0;color:var(--txt);font-size:20px;padding:4px 8px}
+main{padding:14px;max-width:720px;margin:auto}
+.card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px}
+h2{font-size:16px;margin:0 0 10px;color:var(--or)}
+input,select{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:#0b1222;color:var(--txt);font-size:16px}
+.row{display:flex;gap:8px;align-items:center}.row>*{flex:1}
+button.b{border:0;border-radius:10px;padding:12px;font-size:15px;font-weight:600;color:#fff;background:var(--or)}
+button.sec{background:var(--line)}button.red{background:var(--rd)}button.gr{background:var(--gr)}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#020617;border-top:1px solid var(--line);z-index:5}
+nav button{flex:1;background:none;border:0;color:var(--mut);padding:8px 0 10px;font-size:11px}
+nav button b{display:block;font-size:20px;margin-bottom:2px}nav button.on{color:var(--or)}
+.pl{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:#0b1222;margin-bottom:8px}
+.num{width:38px;height:38px;border-radius:50%;background:var(--or);display:flex;align-items:center;justify-content:center;font-weight:800;flex:none}
+.pl .nm{flex:1;font-weight:600}.mut{color:var(--mut);font-size:13px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.chip{flex:none;padding:8px 12px;border-radius:20px;background:#0b1222;border:1px solid var(--line);color:var(--txt);font-size:14px}
+.chip.on{background:var(--or);border-color:var(--or)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.st{border:0;border-radius:12px;padding:12px 4px;color:#fff;font-weight:700;font-size:14px;min-height:64px}
+.st small{display:block;font-weight:400;font-size:11px;opacity:.85;margin-top:3px}
+.score{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center}
+.score div{background:#0b1222;border-radius:10px;padding:8px 2px}.score b{display:block;font-size:20px}.score span{font-size:11px;color:var(--mut)}
+.clock{font-size:46px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;letter-spacing:2px}
+.tg{width:54px;height:30px;border-radius:15px;background:var(--line);position:relative;border:0;flex:none}
+.tg::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:.2s}
+.tg.on{background:var(--gr)}.tg.on::after{left:27px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:7px 4px;text-align:center;border-bottom:1px solid var(--line)}
+th{color:var(--mut);font-weight:600;font-size:11px}td:first-child,th:first-child{text-align:left}
+.tw{overflow-x:auto}
+.log{max-height:160px;overflow:auto;font-size:13px}.log div{padding:4px 0;border-bottom:1px solid var(--line)}
+#ov{position:fixed;inset:0;background:rgba(2,6,23,.96);z-index:20;display:flex;align-items:center;justify-content:center;padding:20px}
+#ov .card{max-width:460px;width:100%;max-height:90vh;overflow:auto}
+.pin{display:flex;justify-content:center;gap:12px;margin:14px 0}.pin i{width:16px;height:16px;border-radius:50%;border:2px solid var(--or)}.pin i.f{background:var(--or)}
+.kp{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.kp button{font-size:22px;padding:14px;border-radius:12px;border:0;background:var(--line);color:#fff}
+.toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:var(--gr);color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;z-index:30;opacity:0;transition:.25s;pointer-events:none}
+.toast.s{opacity:1}
+.hid{display:none!important}
+p{line-height:1.45}
+</style>
+</head>
+<body>
+<header><h1>🏀 Stat Player : <span>Basket</span></h1><button class="ico" onclick="lockNow()" title="Verrouiller">🔒</button></header>
+<main id="app"></main>
+<nav id="nav">
+ <button data-t="joueurs"><b>👥</b>Joueurs</button>
+ <button data-t="match"><b>📋</b>Match</button>
+ <button data-t="temps"><b>⏱️</b>Temps de jeu</button>
+ <button data-t="stats"><b>📊</b>Stats</button>
+ <button data-t="donnees"><b>🛡️</b>Données</button>
+</nav>
+<div id="ov" class="hid"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===== Stockage local uniquement (aucune donnée ne quitte l'appareil) ===== */
+const KEY="statplayer_v1";
+let mem=null;
+function load(){try{const s=localStorage.getItem(KEY);if(s)return JSON.parse(s)}catch(e){}return mem}
+function save(){mem=D;try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){}}
+const blank=()=>({consent:false,pinHash:null,players:[],match:{name:"",opp:"",date:new Date().toISOString().slice(0,10)},stats:{},time:{},onCourt:{},clock:{run:false,start:0,el:0},log:[]});
+let D=load()||blank();
+let tab="joueurs",sel=null,unlocked=!D.pinHash;
+
+const ST=[
+ {k:"p2",l:"2 pts",s:"Panier",c:"var(--or)",pts:2},
+ {k:"p3",l:"3 pts",s:"Panier",c:"#ea580c",pts:3},
+ {k:"lfR",l:"LF ✓",s:"Lancer franc réussi",c:"var(--gr)",pts:1},
+ {k:"lfM",l:"LF ✗",s:"Lancer franc raté",c:"#15803d"},
+ {k:"reb",l:"Rebond",s:"",c:"var(--bl)"},
+ {k:"ctr",l:"Contre",s:"",c:"var(--pu)"},
+ {k:"pas",l:"Passe",s:"réalisée",c:"#0891b2"},
+ {k:"def",l:"Défense",s:"réussie",c:"#0d9488"},
+ {k:"per",l:"Perte",s:"de balle",c:"#b91c1c"},
+ {k:"fau",l:"Faute",s:"",c:"var(--rd)"}
+];
+const LAB={p2:"Panier 2 pts",p3:"Panier 3 pts",lfR:"Lancer franc réussi",lfM:"Lancer franc raté",reb:"Rebond",ctr:"Contre",pas:"Passe réalisée",def:"Défense réussie",per:"Perte de balle",fau:"Faute"};
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function toast(t,c){const e=$("#toast");e.textContent=t;e.style.background=c||"var(--gr)";e.classList.add("s");clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove("s"),1300)}
+function vib(){try{navigator.vibrate&&navigator.vibrate(25)}catch(e){}}
+async function hash(s){try{const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode("sp-basket:"+s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}catch(e){let h=0;for(const c of "sp-basket:"+s)h=(h*31+c.charCodeAt(0))|0;return"x"+h}}
+const S=id=>D.stats[id]||(D.stats[id]={p2:0,p3:0,lfR:0,lfM:0,reb:0,ctr:0,pas:0,def:0,per:0,fau:0});
+const pts=s=>s.p2*2+s.p3*3+s.lfR;
+const fmt=ms=>{const t=Math.floor(ms/1000);return String(Math.floor(t/60)).padStart(2,"0")+":"+String(t%60).padStart(2,"0")};
+const clockEl=()=>D.clock.el+(D.clock.run?Date.now()-D.clock.start:0);
+function ptime(id){const t=D.time[id]||0;return t+(D.clock.run&&D.onCourt[id]?Date.now()-D.clock.start:0)}
+
+/* ===== Navigation ===== */
+document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.t;render()});
+function render(){
+ if(!D.consent)return showConsent();
+ if(!unlocked)return showPin("unlock");
+ $("#ov").classList.add("hid");
+ document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.t===tab));
+ ({joueurs:vJoueurs,match:vMatch,temps:vTemps,stats:vStats,donnees:vDonnees})[tab]();
+}
+
+/* ===== Joueurs ===== */
+function vJoueurs(){
+ $("#app").innerHTML=`<div class="card"><h2>Ajouter un joueur</h2>
+ <div class="row"><input id="pn" placeholder="Nom du joueur" maxlength="40" style="flex:3"><input id="pnum" placeholder="N°" inputmode="numeric" maxlength="2" style="flex:1"></div>
+ <button class="b" style="width:100%;margin-top:10px" onclick="addP()">＋ Ajouter</button></div>
+ <div class="card"><h2>Effectif (${D.players.length})</h2>
+ ${D.players.length?D.players.map(p=>`<div class="pl"><div class="num">${esc(p.num||"–")}</div><div class="nm">${esc(p.name)}<div class="mut">${pts(S(p.id))} pts · ${fmt(ptime(p.id))} jouées</div></div>
+ <button class="ico" onclick="renP('${p.id}')">✏️</button><button class="ico" onclick="delP('${p.id}')">🗑️</button></div>`).join(""):`<p class="mut">Aucun joueur. Ajoute ton effectif ci-dessus.</p>`}</div>`;
+ $("#pn").onkeydown=e=>{if(e.key==="Enter")addP()};
+}
+function addP(){const n=$("#pn").value.trim();if(!n)return toast("Entre un nom","var(--rd)");
+ D.players.push({id:"p"+Date.now().toString(36)+Math.random().toString(36).slice(2,5),name:n,num:$("#pnum").value.replace(/\D/g,"")});save();toast("Joueur ajouté");vJoueurs();$("#pn").focus()}
+function renP(id){const p=D.players.find(x=>x.id===id);const n=prompt("Nom du joueur",p.name);if(n&&n.trim()){p.name=n.trim().slice(0,40);const nu=prompt("Numéro",p.num||"");if(nu!==null)p.num=nu.replace(/\D/g,"").slice(0,2);save();render()}}
+function delP(id){if(!confirm("Supprimer ce joueur et toutes ses statistiques ?"))return;D.players=D.players.filter(p=>p.id!==id);delete D.stats[id];delete D.time[id];delete D.onCourt[id];D.log=D.log.filter(l=>l.id!==id);if(sel===id)sel=null;save();render()}
+
+/* ===== Match (saisie stats) ===== */
+function vMatch(){
+ if(!D.players.length){$("#app").innerHTML=`<div class="card"><p>Ajoute d'abord des joueurs dans l'onglet <b>Joueurs</b>.</p></div>`;return}
+ if(!sel||!D.players.find(p=>p.id===sel))sel=D.players[0].id;
+ const s=S(sel),p=D.players.find(x=>x.id===sel),lfT=s.lfR+s.lfM;
+ const team=D.players.reduce((a,x)=>a+pts(S(x.id)),0);
+ $("#app").innerHTML=`<div class="card"><div class="row"><input id="mo" placeholder="Adversaire" value="${esc(D.match.opp)}"><input id="md" type="date" value="${esc(D.match.date)}"></div>
+ <div class="mut" style="margin-top:8px">Score équipe : <b style="color:var(--or);font-size:16px">${team} pts</b> · Chrono ${fmt(clockEl())} ${D.clock.run?"▶️":"⏸️"}</div></div>
+ <div class="card"><h2>Joueur</h2><div class="chips">${D.players.map(x=>`<button class="chip ${x.id===sel?"on":""}" onclick="sel='${x.id}';vMatch()">${x.num?"#"+esc(x.num)+" ":""}${esc(x.name)}${D.onCourt[x.id]?" 🟢":""}</button>`).join("")}</div></div>
+ <div class="card"><h2>${esc(p.name)}</h2>
+ <div class="score"><div><b>${pts(s)}</b><span>Points</span></div><div><b>${s.reb}</b><span>Rebonds</span></div><div><b>${s.pas}</b><span>Passes</span></div><div><b>${s.lfR}/${lfT}</b><span>LF</span></div>
+ <div><b>${s.ctr}</b><span>Contres</span></div><div><b>${s.def}</b><span>Déf. réussies</span></div><div><b>${s.per}</b><span>Pertes</span></div><div><b style="color:${s.fau>=5?"var(--rd)":"inherit"}">${s.fau}</b><span>Fautes</span></div></div>
+ ${s.fau>=5?`<p style="color:var(--rd);margin:8px 0 0;font-weight:700">⚠️ 5 fautes – joueur éliminé</p>`:""}</div>
+ <div class="grid">${ST.map(t=>`<button class="st" style="background:${t.c}" onclick="rec('${t.k}')">${t.l}<small>${t.s}</small></button>`).join("")}
+ <button class="st" style="background:var(--line)" onclick="undo()">↩️ Annuler<small>dernière action</small></button>
+ <button class="st" style="background:var(--line)" onclick="minus()">－1<small>corriger…</small></button></div>
+ <div class="card" style="margin-top:12px"><h2>Historique</h2><div class="log">${D.log.slice(-30).reverse().map(l=>{const q=D.players.find(x=>x.id===l.id);return`<div><span class="mut">${l.t}</span> · ${esc(q?q.name:"?")} — ${LAB[l.k]}</div>`}).join("")||`<span class="mut">Aucune action</span>`}</div></div>`;
+ $("#mo").onchange=e=>{D.match.opp=e.target.value.slice(0,40);save()};
+ $("#md").onchange=e=>{D.match.date=e.target.value;save()};
+}
+function rec(k){S(sel)[k]++;D.log.push({id:sel,k,t:fmt(clockEl())});save();vib();toast("+1 "+LAB[k]);vMatch()}
+function undo(){const l=D.log.pop();if(!l)return toast("Rien à annuler","var(--line)");const s=S(l.id);if(s[l.k]>0)s[l.k]--;save();toast("Annulé : "+LAB[l.k],"var(--line)");vMatch()}
+function minus(){const ch=prompt("Retirer 1 à quelle stat ?\n"+ST.map((t,i)=>(i+1)+". "+LAB[t.k]).join("\n"));const i=parseInt(ch)-1;if(!(i>=0&&i<ST.length))return;const k=ST[i].k,s=S(sel);if(s[k]>0){s[k]--;for(let j=D.log.length-1;j>=0;j--)if(D.log[j].id===sel&&D.log[j].k===k){D.log.splice(j,1);break}save();toast("−1 "+LAB[k],"var(--line)")}vMatch()}
+
+/* ===== Temps de jeu ===== */
+let tick=null;
+function commitTimes(){if(!D.clock.run)return;const now=Date.now(),d=now-D.clock.start;for(const id in D.onCourt)if(D.onCourt[id])D.time[id]=(D.time[id]||0)+d;D.clock.el+=d;D.clock.start=now}
+function vTemps(){
+ const n=Object.values(D.onCourt).filter(Boolean).length;
+ $("#app").innerHTML=`<div class="card"><h2>Chronomètre du match</h2><div class="clock" id="clk">${fmt(clockEl())}</div>
+ <div class="row" style="margin-top:10px"><button class="b ${D.clock.run?"red":"gr"}" onclick="togClock()">${D.clock.run?"⏸ Pause":"▶ Démarrer"}</button><button class="b sec" onclick="resetClock()">⟲ Remise à zéro</button></div>
+ <p class="mut" style="margin:10px 0 0">Active les joueurs sur le terrain : leur temps de jeu avance quand le chrono tourne. <b style="color:${n>5?"var(--rd)":"var(--gr)"}">${n}/5 sur le terrain</b></p></div>
+ <div class="card"><h2>Joueurs</h2>${D.players.map(p=>`<div class="pl"><div class="num">${esc(p.num||"–")}</div><div class="nm">${esc(p.name)}<div class="mut" id="t_${p.id}">${fmt(ptime(p.id))}</div></div><button class="tg ${D.onCourt[p.id]?"on":""}" onclick="togCourt('${p.id}')"></button></div>`).join("")||`<p class="mut">Aucun joueur.</p>`}</div>`;
+ clearInterval(tick);tick=setInterval(()=>{if(tab!=="temps"||!D.clock.run)return;const c=$("#clk");if(c)c.textContent=fmt(clockEl());D.players.forEach(p=>{const e=$("#t_"+p.id);if(e)e.textContent=fmt(ptime(p.id))})},500);
+}
+function togClock(){if(D.clock.run){commitTimes();D.clock.run=false}else{D.clock.run=true;D.clock.start=Date.now()}save();vTemps()}
+function resetClock(){if(!confirm("Remettre le chrono et tous les temps de jeu à zéro ?"))return;D.clock={run:false,start:0,el:0};D.time={};save();vTemps()}
+function togCourt(id){commitTimes();if(!D.onCourt[id]&&Object.values(D.onCourt).filter(Boolean).length>=5)toast("Attention : déjà 5 joueurs sur le terrain","var(--yl)");D.onCourt[id]=!D.onCourt[id];save();vTemps()}
+setInterval(()=>{if(D.clock.run){commitTimes();save()}},10000);
+
+/* ===== Stats ===== */
+function vStats(){
+ const rows=D.players.map(p=>({p,s:S(p.id)}));
+ const tot=rows.reduce((a,{s})=>{for(const k in s)a[k]=(a[k]||0)+s[k];return a},{});
+ const ev=s=>pts(s)+s.reb+s.pas+s.ctr+s.def-s.per-s.fau-s.lfM;
+ const best=(f)=>rows.length?rows.reduce((a,b)=>f(b.s)>f(a.s)?b:a):null;
+ const tp=best(pts),tr=best(s=>s.reb),ta=best(s=>s.pas);
+ $("#app").innerHTML=`<div class="card"><h2>${esc(D.match.opp?"Match vs "+D.match.opp:"Match")} · ${esc(D.match.date)}</h2>
+ <div class="score"><div><b>${D.players.length?pts(tot):0}</b><span>Points équipe</span></div><div><b>${tot.reb||0}</b><span>Rebonds</span></div><div><b>${tot.pas||0}</b><span>Passes</span></div><div><b>${tot.per||0}</b><span>Pertes</span></div></div></div>
+ ${rows.length?`<div class="card"><h2>🏆 Meilleurs</h2><p style="margin:0">Marqueur : <b>${esc(tp.p.name)}</b> (${pts(tp.s)} pts)<br>Rebondeur : <b>${esc(tr.p.name)}</b> (${tr.s.reb})<br>Passeur : <b>${esc(ta.p.name)}</b> (${ta.s.pas})</p></div>`:""}
+ <div class="card"><h2>Feuille de stats</h2><div class="tw"><table><tr><th>Joueur</th><th>Min</th><th>Pts</th><th>LF</th><th>Reb</th><th>Ctr</th><th>Pas</th><th>Déf</th><th>Pdb</th><th>F</th><th>Éval</th></tr>
+ ${rows.map(({p,s})=>`<tr><td>${p.num?"#"+esc(p.num)+" ":""}${esc(p.name)}</td><td>${fmt(ptime(p.id))}</td><td><b>${pts(s)}</b></td><td>${s.lfR}/${s.lfR+s.lfM}</td><td>${s.reb}</td><td>${s.ctr}</td><td>${s.pas}</td><td>${s.def}</td><td>${s.per}</td><td>${s.fau}</td><td>${ev(s)}</td></tr>`).join("")}</table></div>
+ <p class="mut" style="margin:8px 0 0">Pdb = pertes de balle · Éval = pts + reb + passes + contres + déf. réussies − pertes − fautes − LF ratés</p></div>
+ <div class="row"><button class="b" onclick="shareStats()">📤 Partager le bilan</button><button class="b red" onclick="newMatch()">🆕 Nouveau match</button></div>`;
+}
+function statsText(){let t=`🏀 Stat Player : Basket\n${D.match.opp?"Match vs "+D.match.opp+" – ":""}${D.match.date}\n\n`;
+ D.players.forEach(p=>{const s=S(p.id);t+=`${p.num?"#"+p.num+" ":""}${p.name} : ${pts(s)} pts, ${s.reb} reb, ${s.pas} passes, ${s.ctr} ctr, ${s.def} déf, ${s.per} pertes, ${s.fau} F, LF ${s.lfR}/${s.lfR+s.lfM}, ${fmt(ptime(p.id))} min\n`});return t}
+function shareStats(){const t=statsText();if(window.Android&&Android.share){Android.share(t)}else if(navigator.share){navigator.share({text:t}).catch(()=>{})}else{try{navigator.clipboard.writeText(t);toast("Bilan copié")}catch(e){alert(t)}}}
+function newMatch(){if(!confirm("Commencer un nouveau match ? Les stats et temps de jeu seront remis à zéro (les joueurs sont conservés)."))return;D.stats={};D.time={};D.onCourt={};D.log=[];D.clock={run:false,start:0,el:0};D.match={name:"",opp:"",date:new Date().toISOString().slice(0,10)};save();toast("Nouveau match prêt");render()}
+
+/* ===== Protection des données ===== */
+function vDonnees(){
+ $("#app").innerHTML=`<div class="card"><h2>🛡️ Protection des données</h2>
+ <p>• Toutes les données (noms, statistiques, temps de jeu) sont stockées <b>uniquement sur ce téléphone</b>.<br>
+ • L'application <b>n'a pas accès à Internet</b> : aucune donnée n'est envoyée, partagée ou vendue.<br>
+ • Aucune publicité, aucun compte, aucun traceur.<br>
+ • La sauvegarde automatique Android est désactivée : les données ne partent pas dans le cloud.<br>
+ • Les captures d'écran sont bloquées pour éviter les fuites.<br>
+ • Si tu suis des <b>mineurs</b>, obtiens l'accord des parents avant d'enregistrer leur nom (RGPD). Tu peux utiliser un prénom ou un surnom.</p></div>
+ <div class="card"><h2>🔒 Code PIN</h2><p class="mut">${D.pinHash?"Un code PIN protège l'accès à l'application.":"Aucun code PIN. Ajoute-en un pour protéger les données."}</p>
+ <div class="row"><button class="b" onclick="showPin('set1')">${D.pinHash?"Changer le PIN":"Définir un PIN"}</button>${D.pinHash?`<button class="b sec" onclick="remPin()">Retirer le PIN</button>`:""}</div></div>
+ <div class="card"><h2>📦 Mes données (droit d'accès)</h2><p class="mut">Exporte toutes les données dans un fichier texte que tu peux garder.</p><button class="b sec" style="width:100%" onclick="exportData()">📤 Exporter mes données</button></div>
+ <div class="card"><h2>🗑️ Droit à l'effacement</h2><p class="mut">Supprime définitivement tous les joueurs, stats et réglages de ce téléphone.</p><button class="b red" style="width:100%" onclick="wipe()">Effacer toutes les données</button></div>
+ <p class="mut" style="text-align:center">Stat Player : Basket · v1.0</p>`;
+}
+function exportData(){const c={...D};delete c.pinHash;const t=JSON.stringify(c,null,2);if(window.Android&&Android.share)Android.share(t);else if(navigator.share)navigator.share({text:t}).catch(()=>{});else{try{navigator.clipboard.writeText(t);toast("Données copiées")}catch(e){alert(t)}}}
+function wipe(){if(!confirm("Effacer TOUTES les données ? Action irréversible."))return;if(!confirm("Confirmer l'effacement définitif ?"))return;try{localStorage.removeItem(KEY)}catch(e){}mem=null;D=blank();unlocked=true;sel=null;tab="joueurs";render();toast("Données effacées","var(--rd)")}
+function remPin(){if(!confirm("Retirer le code PIN ?"))return;D.pinHash=null;save();toast("PIN retiré");render()}
+function lockNow(){if(!D.pinHash){tab="donnees";render();return toast("Définis d'abord un code PIN","var(--yl)")}unlocked=false;render()}
+
+function showConsent(){const o=$("#ov");o.classList.remove("hid");o.innerHTML=`<div class="card"><h2 style="font-size:20px">🏀 Bienvenue dans Stat Player : Basket</h2>
+ <h2>Protection de tes données</h2><p>Cette application enregistre le <b>nom des joueurs</b> et leurs <b>statistiques de match</b>.</p>
+ <p>✅ Données stockées uniquement sur ce téléphone<br>✅ Aucun accès Internet, aucun envoi<br>✅ Aucune publicité ni traceur<br>✅ Export et effacement à tout moment (onglet Données)<br>✅ Code PIN possible</p>
+ <p class="mut">Pour des joueurs mineurs, assure-toi d'avoir l'accord des parents ou responsables.</p>
+ <button class="b" style="width:100%" onclick="D.consent=true;save();render()">J'ai compris et j'accepte</button></div>`}
+
+let pinBuf="",pinMode="unlock",pinFirst="";
+function showPin(m){pinMode=m;pinBuf="";const o=$("#ov");o.classList.remove("hid");drawPin()}
+function drawPin(){const t={unlock:"Entre ton code PIN",set1:"Choisis un code PIN (4 chiffres)",set2:"Confirme le code PIN"}[pinMode];
+ $("#ov").innerHTML=`<div class="card" style="text-align:center"><h2>🔒 ${t}</h2><div class="pin">${[0,1,2,3].map(i=>`<i class="${i<pinBuf.length?"f":""}"></i>`).join("")}</div>
+ <div class="kp">${[1,2,3,4,5,6,7,8,9].map(n=>`<button onclick="pk('${n}')">${n}</button>`).join("")}<button onclick="${pinMode==="unlock"?"":"render()"}">${pinMode==="unlock"?"":"✕"}</button><button onclick="pk('0')">0</button><button onclick="pinBuf=pinBuf.slice(0,-1);drawPin()">⌫</button></div></div>`}
+async function pk(n){if(pinBuf.length>=4)return;pinBuf+=n;drawPin();if(pinBuf.length<4)return;
+ if(pinMode==="unlock"){if(await hash(pinBuf)===D.pinHash){unlocked=true;render()}else{toast("Code incorrect","var(--rd)");pinBuf="";setTimeout(drawPin,200)}}
+ else if(pinMode==="set1"){pinFirst=pinBuf;pinMode="set2";pinBuf="";setTimeout(drawPin,150)}
+ else{if(pinBuf===pinFirst){D.pinHash=await hash(pinBuf);unlocked=true;save();toast("Code PIN enregistré");render()}else{toast("Les codes ne correspondent pas","var(--rd)");pinMode="set1";pinBuf="";setTimeout(drawPin,200)}}}
+
+/* Verrouillage auto quand l'appli passe en arrière-plan */
+document.addEventListener("visibilitychange",()=>{if(document.hidden){commitTimes();save();if(D.pinHash){unlocked=false}}else if(D.pinHash&&!unlocked)render()});
+render();
+</script>
+</body>
+</html>
