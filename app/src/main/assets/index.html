@@ -175,23 +175,39 @@ function vMatch(){
  $("#app").innerHTML=`<div class="card"><div class="row" style="align-items:center"><div style="flex:1.4"><div class="clock" id="mclk" style="font-size:40px;text-align:left">${fmt(clockEl())}</div>
  <div class="mut">${D.ended?"🏁 Match terminé":D.clock.run?"▶️ En cours":"⏸️ Chrono arrêté"} · <b style="color:var(--or)">${team} pts</b></div></div>
  <div style="flex:1;display:flex;flex-direction:column;gap:6px"><button class="b ${D.clock.run?"red":"gr"}" style="padding:10px" onclick="togClock2()">${D.clock.run?"⏸ Pause":(D.ended||D.clock.el)?"▶ Reprendre":"▶ Démarrer"}</button><button class="b" style="background:#0f766e;padding:10px" onclick="endMatch()">🏁 Terminer</button></div></div></div>
- <div class="card"><h2 style="display:flex;justify-content:space-between;align-items:center">① Choisis la stat<button class="chip" onclick="custDlg()">🎨 Personnaliser</button></h2><div class="grid">${stOrder().map(t=>{const mi=t.menu?t.menu.find(x=>x[0]===arm):null,on=t.menu?!!mi:arm===t.k;
- return`<button class="st" style="background:${stCol(t)};${arm?(on?"outline:3px solid #fff;outline-offset:2px;transform:scale(1.04)":"opacity:.4"):""}" onclick="${t.menu?(on?"arm=null;vMatch()":`stMenu('${t.k}')`):`arm=arm==='${t.k}'?null:'${t.k}';vMatch()`}">${t.l}<small>${mi?mi[1]+" "+mi[2]:t.s}</small></button>`}).join("")}</div></div>
- <div class="card" style="${arm?"border:2px solid var(--or)":""}"><h2>② ${arm?`Attribuer « ${LAB[arm]} » à…`:"Puis touche le joueur"}</h2>
+ <div class="card"><h2 style="display:flex;justify-content:space-between;align-items:center">① Choisis la stat<span style="display:flex;gap:6px"><button class="chip ${duo?"on":""}" onclick="togDuo()">👥 Duo</button><button class="chip" onclick="custDlg()">🎨</button></span></h2>
+ ${duo?`<p class="mut" style="margin:-4px 0 10px">Mode Duo : choisis <b>2 stats</b> (①, ②), puis touche le joueur 1 et le joueur 2.</p>`:""}<div class="grid">${stOrder().map(t=>{const mi=t.menu?t.menu.find(x=>armed(x[0])):null,n=t.menu?(mi?armed(mi[0]):0):armed(t.k);
+ return`<button class="st" style="position:relative;background:${stCol(t)};${arm?(n?"outline:3px solid #fff;outline-offset:2px;transform:scale(1.04)":"opacity:.4"):""}" onclick="${t.menu&&!n?`stMenu('${t.k}')`:`pickStat('${n&&mi?mi[0]:t.k}')`}">${duo&&n?`<span style="position:absolute;top:2px;right:6px;font-size:18px">${n===1?"①":"②"}</span>`:""}${t.l}<small>${mi?mi[1]+" "+mi[2]:t.s}</small></button>`}).join("")}</div></div>
+ <div class="card" style="${arm?"border:2px solid var(--or)":""}"><h2>② ${!arm?"Puis touche le joueur":arm2?`Joueur 1 → « ${LAB[arm]} »`:duoP?`Joueur 2 → « ${LAB[arm]} »`:duo?`Attribuer « ${LAB[arm]} » à… <span class="mut" style="font-weight:400">(ou choisis une 2e stat)</span>`:`Attribuer « ${LAB[arm]} » à…`}</h2>
+ ${duoP?`<p class="mut" style="margin:-4px 0 10px">Joueur 1 : <b>${esc((D.players.find(x=>x.id===duoP)||{}).name||"?")}</b> ✅</p>`:""}
  ${arm?"":`<p class="mut" style="margin:-4px 0 10px">Sélectionne d'abord une stat ci-dessus.</p>`}
- <div class="grid" style="grid-template-columns:repeat(2,1fr)">${[...D.players].sort((a,b)=>(D.onCourt[b.id]?1:0)-(D.onCourt[a.id]?1:0)).map(x=>{const q=S(x.id);return`<button class="st" style="background:${x.id===sel?"#334155":"#0b1222"};border:1px solid ${q.fau>=5?"var(--rd)":"var(--line)"};display:flex;align-items:center;gap:8px;text-align:left;padding:8px;opacity:${arm?1:.6}" onclick="assign('${x.id}')"><span class="num" style="width:32px;height:32px;font-size:14px">${esc(x.num||"–")}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.name)}${D.onCourt[x.id]?" 🟢":""}<small>${pts(q)} pts · ${q.fau} F${q.fau>=5?" ⚠️":""}</small></span></button>`}).join("")}</div></div>
+ <div class="grid" style="grid-template-columns:repeat(2,1fr)">${[...D.players].sort((a,b)=>(D.onCourt[b.id]?1:0)-(D.onCourt[a.id]?1:0)).map(x=>{const q=S(x.id);return`<button class="st" style="position:relative;background:${x.id===sel?"#334155":"#0b1222"};border:1px solid ${q.fau>=5?"var(--rd)":"var(--line)"};display:flex;align-items:center;gap:8px;text-align:left;padding:8px;opacity:${arm&&x.id!==duoP?1:.6}" onclick="assign('${x.id}')">${x.id===duoP?`<span style="position:absolute;top:2px;right:6px">①</span>`:""}<span class="num" style="width:32px;height:32px;font-size:14px">${esc(x.num||"–")}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.name)}${D.onCourt[x.id]?" 🟢":""}<small>${pts(q)} pts · ${q.fau} F${q.fau>=5?" ⚠️":""}</small></span></button>`}).join("")}</div></div>
  <div class="row" style="margin-bottom:12px"><button class="b sec" onclick="undo()">↩️ Annuler</button><button class="b sec" onclick="minus()">－1 Corriger</button></div>
  <div class="card"><h2 style="display:flex;justify-content:space-between;align-items:center">${esc(p.name)}<button class="chip" onclick="openFiche('${p.id}')">📈 Fiche (${histOf(p.id).length})</button></h2>
  <div class="score"><div><b>${pts(s)}</b><span>Points</span></div><div><b>${s.reb}</b><span>Rebonds</span></div><div><b>${s.pas}</b><span>Passes</span></div><div><b>${s.lfR}/${lfT}</b><span>LF</span></div>
  <div><b>${s.ctr+s.int}</b><span>Contres + int.</span></div><div><b>${s.def}</b><span>Déf. réussies</span></div><div><b>${s.per}</b><span>Pertes</span></div><div><b style="color:${s.fau>=5?"var(--rd)":"inherit"}">${s.fau}</b><span>Fautes</span></div></div>
  ${s.fau>=5?`<p style="color:var(--rd);margin:8px 0 0;font-weight:700">⚠️ 5 fautes – joueur éliminé</p>`:""}</div>
- <div class="card"><h2>Historique</h2><div class="log">${D.log.slice(-30).reverse().map(l=>{const q=D.players.find(x=>x.id===l.id);return`<div><span class="mut">${l.t}</span> · ${esc(q?q.name:"?")} — ${LAB[l.k]}</div>`}).join("")||`<span class="mut">Aucune action</span>`}</div></div>`;
+ <div class="card"><h2>Historique</h2><div class="log">${D.log.slice(-30).reverse().map(l=>{const q=D.players.find(x=>x.id===l.id);return`<div><span class="mut">${l.t}</span> · ${l.g?"👥 ":""}${esc(q?q.name:"?")} — ${LAB[l.k]}</div>`}).join("")||`<span class="mut">Aucune action</span>`}</div></div>`;
  
 }
-let arm=null;
-function assign(id){if(!arm){sel=id;vMatch();return toast("Choisis d'abord une stat","var(--yl)")}sel=id;const k=arm;arm=null;rec(k)}
-function rec(k){D.dirty=true;S(sel)[k]++;if(ALSO[k])S(sel)[ALSO[k]]++;D.log.push({id:sel,k,t:fmt(clockEl())});save();vib();toast("+1 "+LAB[k]+" → "+(D.players.find(x=>x.id===sel)||{}).name);vMatch()}
-function undo(){const l=D.log.pop();if(!l)return toast("Rien à annuler","var(--line)");const s=S(l.id);if(s[l.k]>0){s[l.k]--;if(ALSO[l.k]&&s[ALSO[l.k]]>0)s[ALSO[l.k]]--}save();toast("Annulé : "+LAB[l.k],"var(--line)");vMatch()}
+/* arm = stat ①, arm2 = stat ② (mode Duo) ; duoP = joueur 1 déjà servi, duoG = identifiant du duo */
+let arm=null,arm2=null,duo=false,duoP=null,duoG=null;
+function armed(k){return arm===k?1:arm2===k?2:0}
+function togDuo(){duo=!duo;if(!duo){arm2=null;if(duoP)arm=null;duoP=duoG=null}render()}
+function pickStat(k){
+ if(!duo||duoP){arm=arm===k?null:k;return render()}
+ if(arm===k){arm=arm2;arm2=null}else if(arm2===k)arm2=null;else if(!arm)arm=k;else arm2=k;render()}
+function assign(id){if(!arm){sel=id;vMatch();return toast("Choisis d'abord une stat","var(--yl)")}
+ if(duoP&&id===duoP)return toast("Choisis un autre joueur pour la 2e stat","var(--yl)");
+ sel=id;const k=arm;
+ if(arm2){duoP=id;duoG=Date.now().toString(36);arm=arm2;arm2=null;return rec(k,duoG)}
+ const g=duoP?duoG:null;arm=null;duoP=duoG=null;rec(k,g)}
+function rec(k,g){D.dirty=true;S(sel)[k]++;if(ALSO[k])S(sel)[ALSO[k]]++;const e={id:sel,k,t:fmt(clockEl())};if(g)e.g=g;D.log.push(e);save();vib();toast("+1 "+LAB[k]+" → "+(D.players.find(x=>x.id===sel)||{}).name);vMatch()}
+function unrec(l){const s=S(l.id);if(s[l.k]>0){s[l.k]--;if(ALSO[l.k]&&s[ALSO[l.k]]>0)s[ALSO[l.k]]--}}
+function undo(){const l=D.log.pop();if(!l)return toast("Rien à annuler","var(--line)");unrec(l);let msg=LAB[l.k];
+ if(l.g&&duoP&&l.g===duoG){arm2=arm;arm=l.k;duoP=duoG=null}/* duo en cours : on revient au choix du joueur 1 */
+ else if(l.g)while(D.log.length&&D.log[D.log.length-1].g===l.g){const m=D.log.pop();unrec(m);msg=LAB[m.k]+" + "+msg}
+ save();toast("Annulé : "+msg,"var(--line)");vMatch()}
 function minus(){const MK=KS.filter(k=>k!=="reb"&&k!=="per"),ch=prompt("Retirer 1 à quelle stat ?\n"+MK.map((k,i)=>(i+1)+". "+LAB[k]).join("\n"));const i=parseInt(ch)-1;if(!(i>=0&&i<MK.length))return;const k=MK[i],s=S(sel);if(s[k]>0){s[k]--;if(ALSO[k]&&s[ALSO[k]]>0)s[ALSO[k]]--;for(let j=D.log.length-1;j>=0;j--)if(D.log[j].id===sel&&D.log[j].k===k){D.log.splice(j,1);break}save();toast("−1 "+LAB[k],"var(--line)")}vMatch()}
 
 /* ===== Temps de jeu ===== */
@@ -597,7 +613,7 @@ async function applySync(s){let o;try{const u=ub64(s),body=new Uint8Array(await 
 
 /* ===== Sous-menus des boutons (tirs, lancer franc, défense) ===== */
 function stMenu(k){const t=ST.find(x=>x.k===k),c=stCol(t);ov(`<h2>${t.l}</h2>
- <div style="display:grid;grid-template-columns:repeat(${t.menu.length},1fr);gap:8px;margin-bottom:10px">${t.menu.map(([key,ic,lab,sub,col])=>`<button class="st" style="background:${col||c};min-height:96px;font-size:15px" onclick="arm='${key}';render()"><span style="font-size:26px">${ic}</span><br>${lab}${sub?`<small>${sub}</small>`:""}</button>`).join("")}</div>
+ <div style="display:grid;grid-template-columns:repeat(${t.menu.length},1fr);gap:8px;margin-bottom:10px">${t.menu.map(([key,ic,lab,sub,col])=>`<button class="st" style="background:${col||c};min-height:96px;font-size:15px" onclick="pickStat('${key}')"><span style="font-size:26px">${ic}</span><br>${lab}${sub?`<small>${sub}</small>`:""}</button>`).join("")}</div>
  <button class="b sec" style="width:100%" onclick="render()">Annuler</button>`)}
 
 /* ===== Personnaliser les boutons de stats ===== */
