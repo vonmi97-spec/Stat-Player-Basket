@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.Display;
 import android.view.WindowManager;
 import android.Manifest;
 import android.content.pm.PackageManager;
@@ -33,6 +34,7 @@ public class MainActivity extends Activity {
         super.onCreate(b);
         // Protection des données : bloque captures d'écran et aperçu dans les applis récentes
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
+        tauxMax(); // affichage fluide : 120 Hz si l'écran le permet
         web = new WebView(this);
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
@@ -153,4 +155,27 @@ public class MainActivity extends Activity {
     }
 
     @Override public void onBackPressed() { if (web.canGoBack()) web.goBack(); else super.onBackPressed(); }
+
+    // Demande au téléphone la fréquence d'écran la plus élevée disponible (120 Hz sur les écrans compatibles),
+    // à la même résolution que l'affichage actuel
+    private void tauxMax() {
+        try {
+            Display d = getWindowManager().getDefaultDisplay();
+            Display.Mode cur = d.getMode(), best = cur;
+            for (Display.Mode m : d.getSupportedModes()) {
+                if (m.getPhysicalWidth() == cur.getPhysicalWidth() && m.getPhysicalHeight() == cur.getPhysicalHeight()
+                        && m.getRefreshRate() > best.getRefreshRate()) best = m;
+            }
+            WindowManager.LayoutParams lp = getWindow().getAttributes();
+            lp.preferredDisplayModeId = best.getModeId();
+            lp.preferredRefreshRate = best.getRefreshRate();
+            getWindow().setAttributes(lp);
+        } catch (Exception ignored) { }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        tauxMax();
+    }
 }
