@@ -122,7 +122,7 @@ const z=v=>v||0,fgM=s=>z(s.p2)+z(s.p3),fgA=s=>fgM(s)+z(s.p2M)+z(s.p3M),pct=(a,b)
 /* Personnalisation des boutons de stats (ordre + couleurs), propre à chaque compte */
 const stOrder=()=>{const ks=ST.map(t=>t.k),o=((D.ui||{}).order||[]).filter(k=>ks.includes(k));return[...o,...ks.filter(k=>!o.includes(k))].map(k=>ST.find(t=>t.k===k))};
 const stCol=t=>((D.ui||{}).col||{})[t.k]||t.c;
-const DUO={k:"duo",l:"👥 Duo",s:"2 stats, 2 joueurs",c:"#475569"};
+const DUO={k:"duo",l:"👥 Duo",s:"2 à 5 joueurs",c:"#475569"};
 const pts=s=>z(s.p2)*2+z(s.p3)*3+z(s.lfR);
 const ev=s=>pts(s)+z(s.reb)+z(s.pas)+z(s.int)+z(s.ctr)+z(s.def)+z(s.fsu)-z(s.per)-z(s.fau)-z(s.lfM)-z(s.p2M)-z(s.p3M);
 /* Note générale /100 : 40 de base + 4 par point d'évaluation (bornée 0–100) */
@@ -177,12 +177,12 @@ function vMatch(){
  <div class="mut">${D.ended?"🏁 Match terminé":D.clock.run?"▶️ En cours":"⏸️ Chrono arrêté"} · <b style="color:var(--or)">${team} pts</b></div></div>
  <div style="flex:1;display:flex;flex-direction:column;gap:6px"><button class="b ${D.clock.run?"red":"gr"}" style="padding:10px" onclick="togClock2()">${D.clock.run?"⏸ Pause":(D.ended||D.clock.el)?"▶ Reprendre":"▶ Démarrer"}</button><button class="b" style="background:#0f766e;padding:10px" onclick="endMatch()">🏁 Terminer</button></div></div></div>
  <div class="card"><h2 style="display:flex;justify-content:space-between;align-items:center">① Choisis la stat<button class="chip" onclick="custDlg()">🎨 Personnaliser</button></h2>
- ${duo?`<p class="mut" style="margin:-4px 0 10px">Mode Duo : choisis <b>2 stats</b> (①, ②), puis touche le joueur 1 et le joueur 2.</p>`:""}<div class="grid">${stOrder().map(t=>{const mi=t.menu?t.menu.find(x=>armed(x[0])):null,n=t.menu?(mi?armed(mi[0]):0):armed(t.k);
- return`<button class="st" style="position:relative;background:${stCol(t)};${arm?(n?"outline:3px solid #fff;outline-offset:2px;transform:scale(1.04)":"opacity:.4"):""}" onclick="${t.menu&&!n?`stMenu('${t.k}')`:`pickStat('${n&&mi?mi[0]:t.k}')`}">${duo&&n?`<span style="position:absolute;top:2px;right:6px;font-size:18px">${n===1?"①":"②"}</span>`:""}${t.l}<small>${mi?mi[1]+" "+mi[2]:t.s}</small></button>`}).join("")}<button class="st" style="background:${stCol(DUO)};${duo?"outline:3px solid #fff;outline-offset:2px;transform:scale(1.04)":""}" onclick="togDuo()">👥 Duo<small>${duo?"Activé":"2 stats, 2 joueurs"}</small></button></div></div>
- <div class="card" style="${arm?"border:2px solid var(--or)":""}"><h2>② ${!arm?"Puis touche le joueur":arm2?`Joueur 1 → « ${LAB[arm]} »`:duoP?`Joueur 2 → « ${LAB[arm]} »`:duo?`Attribuer « ${LAB[arm]} » à… <span class="mut" style="font-weight:400">(ou choisis une 2e stat)</span>`:`Attribuer « ${LAB[arm]} » à…`}</h2>
- ${duoP?`<p class="mut" style="margin:-4px 0 10px">Joueur 1 : <b>${esc((D.players.find(x=>x.id===duoP)||{}).name||"?")}</b> ✅</p>`:""}
+ ${duo?`<p class="mut" style="margin:-4px 0 10px">Mode Duo : choisis <b>2 à 5 stats</b> (①, ②, ③…), puis touche les joueurs dans le même ordre.</p>`:""}<div class="grid">${stOrder().map(t=>{const mi=t.menu?t.menu.find(x=>armed(x[0])):null,n=t.menu?(mi?armed(mi[0]):0):armed(t.k);
+ return`<button class="st" style="position:relative;background:${stCol(t)};${arm?(n?"outline:3px solid #fff;outline-offset:2px;transform:scale(1.04)":"opacity:.4"):""}" onclick="${t.menu&&!n?`stMenu('${t.k}')`:`pickStat('${n&&mi?mi[0]:t.k}')`}">${duo&&n?`<span style="position:absolute;top:2px;right:6px;font-size:18px">${CN[n-1]}</span>`:""}${t.l}<small>${mi?mi[1]+" "+mi[2]:t.s}</small></button>`}).join("")}<button class="st" style="background:${stCol(DUO)};${duo?"outline:3px solid #fff;outline-offset:2px;transform:scale(1.04)":""}" onclick="togDuo()">👥 Duo<small>${duo?"Activé":DUO.s}</small></button></div></div>
+ <div class="card" style="${arm?"border:2px solid var(--or)":""}"><h2>② ${!arm?"Puis touche le joueur":(nx.length||duoPs.length)?`Joueur ${duoPs.length+1} → « ${LAB[arm]} »`:duo?`Attribuer « ${LAB[arm]} » à… <span class="mut" style="font-weight:400">(ou choisis une 2e stat)</span>`:`Attribuer « ${LAB[arm]} » à…`}</h2>
+ ${duoPs.length?`<p class="mut" style="margin:-4px 0 10px">${duoPs.map((id,i)=>`Joueur ${i+1} : <b>${esc((D.players.find(x=>x.id===id)||{}).name||"?")}</b> ✅`).join(" · ")}${nx.length?` · encore ${nx.length+1}`:""}</p>`:""}
  ${arm?"":`<p class="mut" style="margin:-4px 0 10px">Sélectionne d'abord une stat ci-dessus.</p>`}
- <div class="grid" style="grid-template-columns:repeat(2,1fr)">${[...D.players].sort((a,b)=>(D.onCourt[b.id]?1:0)-(D.onCourt[a.id]?1:0)).map(x=>{const q=S(x.id);return`<button class="st" style="position:relative;background:${x.id===sel?"#334155":"#0b1222"};border:1px solid ${q.fau>=5?"var(--rd)":"var(--line)"};display:flex;align-items:center;gap:8px;text-align:left;padding:8px;opacity:${arm&&x.id!==duoP?1:.6}" onclick="assign('${x.id}')">${x.id===duoP?`<span style="position:absolute;top:2px;right:6px">①</span>`:""}<span class="num" style="width:32px;height:32px;font-size:14px">${esc(x.num||"–")}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.name)}${D.onCourt[x.id]?" 🟢":""}<small>${pts(q)} pts · ${q.fau} F${q.fau>=5?" ⚠️":""}</small></span></button>`}).join("")}</div></div>
+ <div class="grid" style="grid-template-columns:repeat(2,1fr)">${[...D.players].sort((a,b)=>(D.onCourt[b.id]?1:0)-(D.onCourt[a.id]?1:0)).map(x=>{const q=S(x.id);return`<button class="st" style="position:relative;background:${x.id===sel?"#334155":"#0b1222"};border:1px solid ${q.fau>=5?"var(--rd)":"var(--line)"};display:flex;align-items:center;gap:8px;text-align:left;padding:8px;opacity:${arm&&!duoPs.includes(x.id)?1:.6}" onclick="assign('${x.id}')">${duoPs.includes(x.id)?`<span style="position:absolute;top:2px;right:6px">${CN[duoPs.indexOf(x.id)]}</span>`:""}<span class="num" style="width:32px;height:32px;font-size:14px">${esc(x.num||"–")}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.name)}${D.onCourt[x.id]?" 🟢":""}<small>${pts(q)} pts · ${q.fau} F${q.fau>=5?" ⚠️":""}</small></span></button>`}).join("")}</div></div>
  <div class="row" style="margin-bottom:12px"><button class="b sec" onclick="undo()">↩️ Annuler</button><button class="b sec" onclick="minus()">－1 Corriger</button></div>
  <div class="card"><h2 style="display:flex;justify-content:space-between;align-items:center">${esc(p.name)}<button class="chip" onclick="openFiche('${p.id}')">📈 Fiche (${histOf(p.id).length})</button></h2>
  <div class="score"><div><b>${pts(s)}</b><span>Points</span></div><div><b>${s.reb}</b><span>Rebonds</span></div><div><b>${s.pas}</b><span>Passes</span></div><div><b>${s.lfR}/${lfT}</b><span>LF</span></div>
@@ -191,22 +191,25 @@ function vMatch(){
  <div class="card"><h2>Historique</h2><div class="log">${D.log.slice(-30).reverse().map(l=>{const q=D.players.find(x=>x.id===l.id);return`<div><span class="mut">${l.t}</span> · ${l.g?"👥 ":""}${esc(q?q.name:"?")} — ${LAB[l.k]}</div>`}).join("")||`<span class="mut">Aucune action</span>`}</div></div>`;
  
 }
-/* arm = stat ①, arm2 = stat ② (mode Duo) ; duoP = joueur 1 déjà servi, duoG = identifiant du duo */
-let arm=null,arm2=null,duo=false,duoP=null,duoG=null;
-function armed(k){return arm===k?1:arm2===k?2:0}
-function togDuo(){duo=!duo;if(!duo){arm2=null;if(duoP)arm=null;duoP=duoG=null}render()}
+/* Mode Duo : arm = stat en cours, nx = stats suivantes ; duoPs = joueurs déjà servis, duoG = identifiant de l'action groupée */
+const CN=["①","②","③","④","⑤"],DMAX=5;
+let arm=null,nx=[],duo=false,duoPs=[],duoG=null;
+function armed(k){if(arm===k)return duoPs.length+1;const i=nx.indexOf(k);return i<0?0:duoPs.length+2+i}
+function togDuo(){duo=!duo;if(!duo){nx=[];if(duoPs.length)arm=null;duoPs=[];duoG=null}render()}
 function pickStat(k){
- if(!duo||duoP){arm=arm===k?null:k;return render()}
- if(arm===k){arm=arm2;arm2=null}else if(arm2===k)arm2=null;else if(!arm)arm=k;else arm2=k;render()}
+ if(!duo||duoPs.length){arm=arm===k?null:k;return render()}
+ const L=[arm,...nx].filter(Boolean),i=L.indexOf(k);
+ if(i>=0)L.splice(i,1);else if(L.length<DMAX)L.push(k);else{toast("Maximum "+DMAX+" stats","var(--yl)");return render()}
+ arm=L[0]||null;nx=L.slice(1);render()}
 function assign(id){if(!arm){sel=id;vMatch();return toast("Choisis d'abord une stat","var(--yl)")}
- if(duoP&&id===duoP)return toast("Choisis un autre joueur pour la 2e stat","var(--yl)");
+ if(duoPs.includes(id))return toast("Ce joueur a déjà reçu une stat : choisis-en un autre","var(--yl)");
  sel=id;const k=arm;
- if(arm2){duoP=id;duoG=Date.now().toString(36);arm=arm2;arm2=null;return rec(k,duoG)}
- const g=duoP?duoG:null;arm=null;duoP=duoG=null;rec(k,g)}
+ if(nx.length){if(!duoPs.length)duoG=Date.now().toString(36);duoPs.push(id);arm=nx.shift();return rec(k,duoG)}
+ const g=duoPs.length?duoG:null;arm=null;duoPs=[];duoG=null;rec(k,g)}
 function rec(k,g){D.dirty=true;S(sel)[k]++;if(ALSO[k])S(sel)[ALSO[k]]++;const e={id:sel,k,t:fmt(clockEl())};if(g)e.g=g;D.log.push(e);save();vib();toast("+1 "+LAB[k]+" → "+(D.players.find(x=>x.id===sel)||{}).name);vMatch()}
 function unrec(l){const s=S(l.id);if(s[l.k]>0){s[l.k]--;if(ALSO[l.k]&&s[ALSO[l.k]]>0)s[ALSO[l.k]]--}}
 function undo(){const l=D.log.pop();if(!l)return toast("Rien à annuler","var(--line)");unrec(l);let msg=LAB[l.k];
- if(l.g&&duoP&&l.g===duoG){arm2=arm;arm=l.k;duoP=duoG=null}/* duo en cours : on revient au choix du joueur 1 */
+ if(l.g&&duoPs.length&&l.g===duoG){nx.unshift(arm);arm=l.k;duoPs.pop();if(!duoPs.length)duoG=null}/* duo en cours : on revient au joueur précédent */
  else if(l.g)while(D.log.length&&D.log[D.log.length-1].g===l.g){const m=D.log.pop();unrec(m);msg=LAB[m.k]+" + "+msg}
  save();toast("Annulé : "+msg,"var(--line)");vMatch()}
 function minus(){const MK=KS.filter(k=>k!=="reb"&&k!=="per"),ch=prompt("Retirer 1 à quelle stat ?\n"+MK.map((k,i)=>(i+1)+". "+LAB[k]).join("\n"));const i=parseInt(ch)-1;if(!(i>=0&&i<MK.length))return;const k=MK[i],s=S(sel);if(s[k]>0){s[k]--;if(ALSO[k]&&s[ALSO[k]]>0)s[ALSO[k]]--;for(let j=D.log.length-1;j>=0;j--)if(D.log[j].id===sel&&D.log[j].k===k){D.log.splice(j,1);break}save();toast("−1 "+LAB[k],"var(--line)")}vMatch()}
