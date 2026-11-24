@@ -11,6 +11,8 @@ import android.os.Environment;
 import android.util.DisplayMetrics;
 import android.view.Display;
 import android.view.Gravity;
+import android.view.DisplayCutout;
+import android.graphics.Rect;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.os.Build;
@@ -83,6 +85,7 @@ public class MainActivity extends Activity implements LifecycleOwner {
         s.setMediaPlaybackRequiresUserGesture(false);
         web.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) { return true; } // aucune navigation externe
+            @Override public void onPageFinished(WebView v, String url) { pushCut(); }
         });
         web.setWebChromeClient(new WebChromeClient() {
             // Caméra : uniquement pour scanner le QR code de synchronisation, après accord de l'utilisateur
@@ -118,7 +121,15 @@ public class MainActivity extends Activity implements LifecycleOwner {
         web.addJavascriptInterface(new VideoBridge(), "AndroidVideo");
         web.loadUrl("file:///android_asset/index.html");
         // Zone vidéo (aperçu caméra ou lecture) au-dessus de l'appli, ou à gauche en mode paysage
+        // Affichage jusque sous l'encoche (plus de bande noire en haut)
+        if (Build.VERSION.SDK_INT >= 28) {
+            WindowManager.LayoutParams wlp = getWindow().getAttributes();
+            wlp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            getWindow().setAttributes(wlp);
+        }
         root = new LinearLayout(this);
+        root.setBackgroundColor(0xFF020617);
+        root.setOnApplyWindowInsetsListener((v, in) -> { readCut(in); return in; });
         panel = new FrameLayout(this);
         panel.setBackgroundColor(Color.BLACK);
         panel.setVisibility(View.GONE);
@@ -247,7 +258,42 @@ public class MainActivity extends Activity implements LifecycleOwner {
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
-        if (hasFocus) pleinEcran();
+        if (hasFocus) {
+            pleinEcran();
+            root.post(() -> { WindowInsets in = getWindow().getDecorView().getRootWindowInsets(); if (in != null) readCut(in); });
+        }
+    }
+
+    // ===== Encoche : position de la caméra transmise à la page pour que le bandeau s'y adapte =====
+    private int cutT, cutL, cutR;
+    private Rect hole;
+
+    private void readCut(WindowInsets in) {
+        int t = 0, l = 0, r = 0;
+        Rect h = null;
+        if (Build.VERSION.SDK_INT >= 28) {
+            DisplayCutout dc = in.getDisplayCutout();
+            if (dc != null) {
+                t = dc.getSafeInsetTop(); l = dc.getSafeInsetLeft(); r = dc.getSafeInsetRight();
+                for (Rect b : dc.getBoundingRects()) if (b.top <= 0 && t > 0 && b.bottom <= t + 4) h = b;
+            }
+        }
+        if (t == cutT && l == cutL && r == cutR && (h == null ? hole == null : h.equals(hole))) return;
+        cutT = t; cutL = l; cutR = r; hole = h;
+        applyLayout();
+        pushCut();
+    }
+
+    private void pushCut() {
+        if (web == null) return;
+        float d = getResources().getDisplayMetrics().density;
+        DisplayMetrics dm = getResources().getDisplayMetrics();
+        boolean land = dm.widthPixels > dm.heightPixels;
+        boolean topFree = land || panel == null || panel.getVisibility() != View.VISIBLE;
+        float t = topFree ? cutT / d : 0, hl = 0, hr = 0;
+        if (topFree && hole != null) { hl = (hole.left - cutL) / d; hr = (hole.right - cutL) / d; }
+        final String code = "window.setCut&&setCut(" + t + "," + hl + "," + hr + ")";
+        web.post(() -> web.evaluateJavascript(code, null));
     }
 
     @Override protected void onStart() { super.onStart(); life.handleLifecycleEvent(Lifecycle.Event.ON_START); }
@@ -293,7 +339,9 @@ public class MainActivity extends Activity implements LifecycleOwner {
             pl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (int) Math.min(dm.widthPixels * 9f / 16f, dm.heightPixels * 0.2f));
             wl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
         }
+        if (!land) pl.topMargin = cutT; // la vidéo ne passe pas sous l'encoche
         panel.setLayoutParams(pl);
+        root.setPadding(cutL, 0, cutR, 0);
         web.setLayoutParams(wl);
     }
 
@@ -314,11 +362,13 @@ public class MainActivity extends Activity implements LifecycleOwner {
         panel.removeAllViews();
         panel.addView(v, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER));
         panel.setVisibility(View.VISIBLE);
+        pushCut();
     }
 
     private void hidePanel() {
         panel.removeAllViews();
         panel.setVisibility(View.GONE);
+        pushCut();
     }
 
     private void vidStartReq(String id) {
