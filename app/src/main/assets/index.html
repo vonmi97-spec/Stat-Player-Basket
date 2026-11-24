@@ -17,17 +17,17 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;font-family:system-ui,-apple-system,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding-bottom:calc(72px + env(safe-area-inset-bottom));user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none}
 input{-webkit-user-select:text;user-select:text}
-header{position:sticky;top:0;z-index:5;background:#020617;padding:calc(4px + env(safe-area-inset-top)) calc(12px + var(--cpr,0px)) 4px calc(12px + var(--cpl,0px));min-height:var(--cut,0px);box-sizing:border-box;display:flex;align-items:center;gap:8px;border-bottom:2px solid var(--or);transition:transform .25s}header.hide{transform:translateY(calc(-100% + env(safe-area-inset-top)))}header .ico{font-size:16px;padding:2px 4px}
+header{position:sticky;top:0;z-index:5;background:#020617;padding:calc(4px + env(safe-area-inset-top)) calc(12px + var(--cpr,0px) + var(--sr,0px)) 4px calc(12px + var(--cpl,0px) + var(--sl,0px));min-height:var(--cut,0px);box-sizing:border-box;display:flex;align-items:center;gap:8px;border-bottom:2px solid var(--or);transition:transform .25s}header.hide{transform:translateY(calc(-100% + env(safe-area-inset-top)))}header .ico{font-size:16px;padding:2px 4px}
 header #who{margin-left:auto}header h1{max-width:var(--h1w,none);font-size:14px;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}header h1 span{color:var(--or)}
 .ico{background:none;border:0;color:var(--txt);font-size:20px;padding:4px 8px}
-main{padding:14px;max-width:720px;margin:auto}
+main{padding:14px calc(14px + var(--sr,0px)) 14px calc(14px + var(--sl,0px));max-width:720px;margin:auto}@media (orientation:landscape){main{max-width:none}nav button{padding:4px 0 5px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px}nav button b{display:inline;font-size:16px;margin:0}body{padding-bottom:calc(40px + env(safe-area-inset-bottom))}}@media (orientation:landscape) and (min-width:640px){main{column-count:2;column-gap:12px}main .card{break-inside:avoid;-webkit-column-break-inside:avoid}}
 .card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px}
 h2{font-size:16px;margin:0 0 10px;color:var(--or)}
 input,select,textarea{width:100%;font-family:inherit;-webkit-appearance:none;appearance:none;min-height:46px;padding:12px;border-radius:10px;border:1px solid var(--line);background:#0b1222;color:var(--txt);font-size:16px}
 .row{display:flex;gap:8px;align-items:center}.row>*{flex:1}
 button.b{border:0;border-radius:10px;padding:12px;font-size:15px;font-weight:600;color:#fff;background:var(--or)}
 button.sec{background:var(--line)}button.red{background:var(--rd)}button.gr{background:var(--gr)}
-nav{position:fixed;bottom:0;left:0;right:0;display:flex;padding-bottom:env(safe-area-inset-bottom);background:#020617;border-top:1px solid var(--line);z-index:5}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;padding:0 var(--sr,0px) env(safe-area-inset-bottom) var(--sl,0px);background:#020617;border-top:1px solid var(--line);z-index:5}
 nav button{flex:1;min-width:0;background:none;border:0;color:var(--mut);padding:8px 0 10px;font-size:11px}
 nav button b{display:block;font-size:20px;margin-bottom:2px}nav button.on{color:var(--or)}
 .pl{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;background:#0b1222;margin-bottom:8px}
@@ -137,9 +137,9 @@ const clockEl=()=>D.clock.el+(D.clock.run?Date.now()-D.clock.start:0);
 function ptime(id){const t=D.time[id]||0;return t+(D.clock.run&&D.onCourt[id]?Date.now()-D.clock.start:0)}
 
 /* ===== Encoche (Android) : le bandeau occupe la zone de la caméra en l'évitant ===== */
-function setCut(t,l,r){const h=document.documentElement.style,W=innerWidth;let pl=0,pr=0,mw="none";
+function setCut(t,l,r,sl,sr){const h=document.documentElement.style,W=innerWidth;let pl=0,pr=0,mw="none";
  if(t&&r>l){const c=(l+r)/2;if(c<W/3)pl=r+4;else if(c>W*2/3)pr=W-l+4;else mw=Math.max(90,l-22)+"px"}
- h.setProperty("--cut",t+"px");h.setProperty("--cpl",pl+"px");h.setProperty("--cpr",pr+"px");h.setProperty("--h1w",mw)}
+ h.setProperty("--cut",t+"px");h.setProperty("--cpl",pl+"px");h.setProperty("--cpr",pr+"px");h.setProperty("--h1w",mw);h.setProperty("--sl",(sl||0)+"px");h.setProperty("--sr",(sr||0)+"px")}
 /* ===== Bandeau du haut : se masque quand on descend, réapparaît quand on remonte ===== */
 {let ly=0;addEventListener("scroll",()=>{const y=scrollY,h=document.querySelector("header");if(!h)return;if(y<40||y<ly-6)h.classList.remove("hide");else if(y>ly+6)h.classList.add("hide");ly=y},{passive:true})}
 /* ===== Navigation ===== */

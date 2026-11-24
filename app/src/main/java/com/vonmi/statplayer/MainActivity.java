@@ -292,7 +292,10 @@ public class MainActivity extends Activity implements LifecycleOwner {
         boolean topFree = land || panel == null || panel.getVisibility() != View.VISIBLE;
         float t = topFree ? cutT / d : 0, hl = 0, hr = 0;
         if (topFree && hole != null) { hl = (hole.left - cutL) / d; hr = (hole.right - cutL) / d; }
-        final String code = "window.setCut&&setCut(" + t + "," + hl + "," + hr + ")";
+        // Côtés (paysage) : la page s'étend sous la caméra, seuls les contenus sont décalés
+        boolean panelLeft = land && panel != null && panel.getVisibility() == View.VISIBLE;
+        float sl = panelLeft ? 0 : cutL / d, sr = cutR / d;
+        final String code = "window.setCut&&setCut(" + t + "," + hl + "," + hr + "," + sl + "," + sr + ")";
         web.post(() -> web.evaluateJavascript(code, null));
     }
 
@@ -341,7 +344,6 @@ public class MainActivity extends Activity implements LifecycleOwner {
         }
         if (!land) pl.topMargin = cutT; // la vidéo ne passe pas sous l'encoche
         panel.setLayoutParams(pl);
-        root.setPadding(cutL, 0, cutR, 0);
         web.setLayoutParams(wl);
     }
 
