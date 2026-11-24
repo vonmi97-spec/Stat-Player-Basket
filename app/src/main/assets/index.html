@@ -17,8 +17,8 @@
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;font-family:system-ui,-apple-system,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding-bottom:calc(72px + env(safe-area-inset-bottom));user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none}
 input{-webkit-user-select:text;user-select:text}
-header{position:sticky;top:0;z-index:5;background:#020617;padding:calc(12px + env(safe-area-inset-top)) 16px 12px;display:flex;align-items:center;gap:10px;border-bottom:2px solid var(--or)}
-header h1{font-size:16px;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}header h1 span{color:var(--or)}
+header{position:sticky;top:0;z-index:5;background:#020617;padding:calc(4px + env(safe-area-inset-top)) 12px 4px;display:flex;align-items:center;gap:8px;border-bottom:2px solid var(--or);transition:transform .25s}header.hide{transform:translateY(-110%)}header .ico{font-size:16px;padding:2px 4px}
+header h1{font-size:14px;margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}header h1 span{color:var(--or)}
 .ico{background:none;border:0;color:var(--txt);font-size:20px;padding:4px 8px}
 main{padding:14px;max-width:720px;margin:auto}
 .card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px}
@@ -67,7 +67,7 @@ p{line-height:1.45}
 </style>
 </head>
 <body>
-<header><h1>🏀 Stat Player : <span>Basket</span></h1><button id="who" class="chip" style="max-width:105px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:6px 10px" onclick="tab='donnees';render()"></button><button class="ico" onclick="lockNow()" title="Verrouiller">🔒</button></header>
+<header><h1>🏀 Stat Player : <span>Basket</span></h1><button id="who" class="chip" style="max-width:105px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:3px 9px;font-size:12px" onclick="tab='donnees';render()"></button><button class="ico" onclick="lockNow()" title="Verrouiller">🔒</button></header>
 <main id="app"></main>
 <nav id="nav">
  <button data-t="joueurs"><b>👥</b>Joueurs</button>
@@ -136,6 +136,8 @@ const fmt=ms=>{const t=Math.floor(ms/1000);return String(Math.floor(t/60)).padSt
 const clockEl=()=>D.clock.el+(D.clock.run?Date.now()-D.clock.start:0);
 function ptime(id){const t=D.time[id]||0;return t+(D.clock.run&&D.onCourt[id]?Date.now()-D.clock.start:0)}
 
+/* ===== Bandeau du haut : se masque quand on descend, réapparaît quand on remonte ===== */
+{let ly=0;addEventListener("scroll",()=>{const y=scrollY,h=document.querySelector("header");if(!h)return;if(y<40||y<ly-6)h.classList.remove("hide");else if(y>ly+6)h.classList.add("hide");ly=y},{passive:true})}
 /* ===== Navigation ===== */
 document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>{vClose();tab=b.dataset.t;render()});
 function render(){
