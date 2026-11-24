@@ -11,6 +11,9 @@ import android.os.Environment;
 import android.util.DisplayMetrics;
 import android.view.Display;
 import android.view.Gravity;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
+import android.os.Build;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -223,6 +226,28 @@ public class MainActivity extends Activity implements LifecycleOwner {
         super.onResume();
         life.handleLifecycleEvent(Lifecycle.Event.ON_RESUME);
         tauxMax();
+        pleinEcran();
+    }
+
+    // Plein écran : barre d'état et barre de navigation masquées (glisser depuis un bord pour les faire réapparaître)
+    @SuppressWarnings("deprecation")
+    private void pleinEcran() {
+        if (Build.VERSION.SDK_INT >= 30) {
+            WindowInsetsController c = getWindow().getInsetsController();
+            if (c != null) {
+                c.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+                c.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            }
+        } else {
+            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+        }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) pleinEcran();
     }
 
     @Override protected void onStart() { super.onStart(); life.handleLifecycleEvent(Lifecycle.Event.ON_START); }
