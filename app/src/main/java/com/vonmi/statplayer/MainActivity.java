@@ -4,7 +4,39 @@ import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.annotation.SuppressLint;
+import android.content.res.Configuration;
+import android.graphics.Color;
+import android.os.Environment;
+import android.util.DisplayMetrics;
 import android.view.Display;
+import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.widget.MediaController;
+import android.widget.TextView;
+import android.widget.VideoView;
+import androidx.annotation.NonNull;
+import androidx.camera.core.CameraSelector;
+import androidx.camera.core.Preview;
+import androidx.camera.lifecycle.ProcessCameraProvider;
+import androidx.camera.video.FallbackStrategy;
+import androidx.camera.video.FileOutputOptions;
+import androidx.camera.video.PendingRecording;
+import androidx.camera.video.Quality;
+import androidx.camera.video.QualitySelector;
+import androidx.camera.video.Recorder;
+import androidx.camera.video.Recording;
+import androidx.camera.video.VideoCapture;
+import androidx.camera.video.VideoRecordEvent;
+import androidx.camera.view.PreviewView;
+import androidx.core.content.ContextCompat;
+import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.LifecycleRegistry;
+import com.google.common.util.concurrent.ListenableFuture;
 import android.view.WindowManager;
 import android.Manifest;
 import android.content.pm.PackageManager;
@@ -22,7 +54,7 @@ import androidx.core.content.FileProvider;
 import java.io.File;
 import java.io.FileOutputStream;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements LifecycleOwner {
     private WebView web;
     private ValueCallback<Uri[]> fileCb;
     private static final int PICK = 42, CAM = 43;
@@ -32,6 +64,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        life.handleLifecycleEvent(Lifecycle.Event.ON_CREATE);
         // Protection des données : bloque captures d'écran et aperçu dans les applis récentes
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
         tauxMax(); // affichage fluide : 120 Hz si l'écran le permet
@@ -79,13 +112,25 @@ public class MainActivity extends Activity {
         });
         web.addJavascriptInterface(new Bridge(), "Android");
         web.addJavascriptInterface(new PrintBridge(), "AndroidPrint");
+        web.addJavascriptInterface(new VideoBridge(), "AndroidVideo");
         web.loadUrl("file:///android_asset/index.html");
-        setContentView(web);
+        // Zone vidéo (aperçu caméra ou lecture) au-dessus de l'appli, ou à gauche en mode paysage
+        root = new LinearLayout(this);
+        panel = new FrameLayout(this);
+        panel.setBackgroundColor(Color.BLACK);
+        panel.setVisibility(View.GONE);
+        root.addView(panel);
+        root.addView(web);
+        applyLayout();
+        setContentView(root);
     }
 
     @Override
     public void onRequestPermissionsResult(int req, String[] perms, int[] res) {
-        if (req == CAM && camReq != null) {
+        if (req == VID) {
+            if (res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) vidBegin();
+            else { String id = vidPending; vidPending = null; js("err", id, "'Autorise la caméra pour filmer le match'"); }
+        } else if (req == CAM && camReq != null) {
             if (res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) camReq.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
             else camReq.deny();
             camReq = null;
@@ -176,6 +221,195 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        life.handleLifecycleEvent(Lifecycle.Event.ON_RESUME);
         tauxMax();
+    }
+
+    @Override protected void onStart() { super.onStart(); life.handleLifecycleEvent(Lifecycle.Event.ON_START); }
+    @Override protected void onPause() { life.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE); super.onPause(); }
+    @Override protected void onStop() {
+        // L'appli passe en arrière-plan : la vidéo est arrêtée et enregistrée proprement
+        if (recording != null) recording.stop();
+        if (vv != null) vv.pause();
+        life.handleLifecycleEvent(Lifecycle.Event.ON_STOP);
+        super.onStop();
+    }
+    @Override protected void onDestroy() { life.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY); super.onDestroy(); }
+
+    @Override
+    public void onConfigurationChanged(@NonNull Configuration c) {
+        super.onConfigurationChanged(c);
+        applyLayout();
+        if (vcap != null && recording == null) vcap.setTargetRotation(getWindowManager().getDefaultDisplay().getRotation());
+    }
+
+    // ===== Vidéo du match : enregistrement (CameraX) et relecture, fichiers gardés dans l'espace privé de l'appli =====
+    private final LifecycleRegistry life = new LifecycleRegistry(this);
+    private LinearLayout root;
+    private FrameLayout panel;
+    private VideoView vv;
+    private ProcessCameraProvider camProv;
+    private VideoCapture<Recorder> vcap;
+    private Recording recording;
+    private String vidPending;
+    private static final int VID = 44;
+
+    @NonNull @Override public Lifecycle getLifecycle() { return life; }
+
+    private void applyLayout() {
+        DisplayMetrics dm = getResources().getDisplayMetrics();
+        boolean land = dm.widthPixels > dm.heightPixels;
+        root.setOrientation(land ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams pl, wl;
+        if (land) {
+            pl = new LinearLayout.LayoutParams((int) (dm.widthPixels * 0.5f), ViewGroup.LayoutParams.MATCH_PARENT);
+            wl = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
+        } else {
+            pl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (int) Math.min(dm.widthPixels * 9f / 16f, dm.heightPixels * 0.35f));
+            wl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
+        }
+        panel.setLayoutParams(pl);
+        web.setLayoutParams(wl);
+    }
+
+    private File vidFile(String id) {
+        File d = getExternalFilesDir(Environment.DIRECTORY_MOVIES);
+        if (d == null) d = new File(getFilesDir(), "videos");
+        d.mkdirs();
+        return new File(d, id.replaceAll("[^A-Za-z0-9_-]", "_") + ".mp4");
+    }
+
+    private void js(String type, String id, String val) {
+        if (id == null) return;
+        final String code = "window.vidCb&&vidCb('" + type + "','" + id.replaceAll("[^A-Za-z0-9_-]", "") + "'," + val + ")";
+        runOnUiThread(() -> web.evaluateJavascript(code, null));
+    }
+
+    private void showPanel(View v) {
+        panel.removeAllViews();
+        panel.addView(v, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER));
+        panel.setVisibility(View.VISIBLE);
+    }
+
+    private void hidePanel() {
+        panel.removeAllViews();
+        panel.setVisibility(View.GONE);
+    }
+
+    private void vidStartReq(String id) {
+        if (recording != null) return;
+        vidPending = id;
+        boolean cam = checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
+        boolean mic = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+        if (cam && mic) vidBegin();
+        else requestPermissions(new String[]{Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO}, VID);
+    }
+
+    @SuppressLint("MissingPermission")
+    private void vidBegin() {
+        final String id = vidPending;
+        vidPending = null;
+        if (id == null || recording != null) return;
+        vidClose();
+        final PreviewView pv = new PreviewView(this);
+        pv.setScaleType(PreviewView.ScaleType.FIT_CENTER);
+        FrameLayout box = new FrameLayout(this);
+        box.addView(pv, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        TextView dot = new TextView(this);
+        dot.setText("● REC");
+        dot.setTextColor(Color.WHITE);
+        dot.setBackgroundColor(0xCCDC2626);
+        dot.setPadding(14, 4, 14, 4);
+        FrameLayout.LayoutParams dl = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START);
+        dl.setMargins(12, 12, 0, 0);
+        box.addView(dot, dl);
+        showPanel(box);
+        final ListenableFuture<ProcessCameraProvider> f = ProcessCameraProvider.getInstance(this);
+        f.addListener(() -> {
+            try {
+                camProv = f.get();
+                Preview prev = new Preview.Builder().build();
+                prev.setSurfaceProvider(pv.getSurfaceProvider());
+                Recorder rc = new Recorder.Builder()
+                        .setQualitySelector(QualitySelector.from(Quality.HD, FallbackStrategy.lowerQualityOrHigherThan(Quality.HD)))
+                        .build();
+                vcap = VideoCapture.withOutput(rc);
+                vcap.setTargetRotation(getWindowManager().getDefaultDisplay().getRotation());
+                camProv.unbindAll();
+                camProv.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, prev, vcap);
+                PendingRecording pr = vcap.getOutput().prepareRecording(this, new FileOutputOptions.Builder(vidFile(id)).build());
+                if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) pr = pr.withAudioEnabled();
+                recording = pr.start(ContextCompat.getMainExecutor(this), e -> onVidEvent(id, e));
+                getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            } catch (Exception ex) {
+                if (camProv != null) camProv.unbindAll();
+                recording = null;
+                hidePanel();
+                js("err", id, "'Caméra indisponible'");
+            }
+        }, ContextCompat.getMainExecutor(this));
+    }
+
+    private void onVidEvent(String id, VideoRecordEvent e) {
+        if (e instanceof VideoRecordEvent.Start) {
+            js("start", id, String.valueOf(System.currentTimeMillis()));
+        } else if (e instanceof VideoRecordEvent.Finalize) {
+            long dur = e.getRecordingStats().getRecordedDurationNanos() / 1000000L;
+            recording = null;
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            if (camProv != null) camProv.unbindAll();
+            vcap = null;
+            hidePanel();
+            File f = vidFile(id);
+            if (f.exists() && f.length() > 0 && dur > 0) js("end", id, String.valueOf(dur));
+            else { f.delete(); js("err", id, "'La vidéo n\\'a pas pu être enregistrée'"); }
+        }
+    }
+
+    private void vidStop() {
+        if (recording != null) recording.stop();
+    }
+
+    private void vidPlay(String id) {
+        if (recording != null) return;
+        vidClose();
+        File f = vidFile(id);
+        if (!f.exists()) return;
+        final VideoView v = new VideoView(this);
+        MediaController mc = new MediaController(this);
+        mc.setAnchorView(v);
+        v.setMediaController(mc);
+        v.setOnPreparedListener(mp -> v.start());
+        v.setVideoURI(Uri.fromFile(f));
+        vv = v;
+        showPanel(v);
+    }
+
+    private void vidClose() {
+        if (vv != null) { vv.stopPlayback(); vv = null; }
+        if (recording == null) hidePanel();
+    }
+
+    class VideoBridge {
+        @JavascriptInterface public void start(String id) { runOnUiThread(() -> vidStartReq(id)); }
+        @JavascriptInterface public void stop() { runOnUiThread(MainActivity.this::vidStop); }
+        @JavascriptInterface public boolean recording() { return recording != null; }
+        @JavascriptInterface public void play(String id) { runOnUiThread(() -> vidPlay(id)); }
+        @JavascriptInterface public void seek(int ms) { runOnUiThread(() -> { if (vv != null) { vv.seekTo(ms); vv.start(); } }); }
+        @JavascriptInterface public void close() { runOnUiThread(MainActivity.this::vidClose); }
+        @JavascriptInterface public long size(String id) { File f = vidFile(id); return f.exists() ? f.length() : -1; }
+        @JavascriptInterface public boolean del(String id) { return vidFile(id).delete(); }
+        @JavascriptInterface public void share(String id) {
+            runOnUiThread(() -> {
+                try {
+                    Uri u = FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".fichiers", vidFile(id));
+                    Intent i = new Intent(Intent.ACTION_SEND);
+                    i.setType("video/mp4");
+                    i.putExtra(Intent.EXTRA_STREAM, u);
+                    i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    startActivity(Intent.createChooser(i, "Partager la vidéo"));
+                } catch (Exception ignored) { }
+            });
+        }
     }
 }

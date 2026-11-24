@@ -1,2 +1,2 @@
 <?xml version="1.0" encoding="utf-8"?>
-<paths><cache-path name="partage" path="partage/"/></paths>
+<paths><cache-path name="partage" path="partage/"/><external-files-path name="videos" path="Movies/"/><files-path name="videos_int" path="videos/"/></paths>

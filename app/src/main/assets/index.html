@@ -98,7 +98,7 @@ let fp=null;
 let tab="joueurs",sel=null,unlocked=false;
 const acc=()=>A.accounts.find(a=>a.id===cur);
 function openSpace(id,already){cur=id;A.last=id;saveA();D=load()||blank();if(!D.history)D.history=[];if(!D.obs)D.obs=[];sel=null;fp=null;tab="joueurs";unlocked=already||!D.pinHash;render()}
-function logout(){commitTimes();save();cur=null;D=blank();unlocked=false;render();toast("Déconnecté","var(--line)")}
+function logout(){if(vcur)return toast("Arrête d'abord la vidéo","var(--yl)");commitTimes();save();cur=null;D=blank();unlocked=false;render();toast("Déconnecté","var(--line)")}
 
 const ST=[
  {k:"p2",l:"2 pts",s:"Réussi / raté",c:"#f97316",menu:[["p2","✅","Tir réussi","+2 pts","#16a34a"],["p2M","❌","Tir raté","0 pt","#dc2626"]]},
@@ -137,15 +137,15 @@ const clockEl=()=>D.clock.el+(D.clock.run?Date.now()-D.clock.start:0);
 function ptime(id){const t=D.time[id]||0;return t+(D.clock.run&&D.onCourt[id]?Date.now()-D.clock.start:0)}
 
 /* ===== Navigation ===== */
-document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>{tab=b.dataset.t;render()});
+document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>{vClose();tab=b.dataset.t;render()});
 function render(){
  if(!cur)return showAuth(A.accounts.length?"home":"home");
  const w=$("#who");if(w)w.textContent=cur==="guest"?"👋 Invité":"👤 "+(acc()||{}).name;
  if(!D.consent)return showConsent();
  if(!unlocked)return showPin("unlock");
  $("#ov").classList.add("hid");
- document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.t===(tab==="fiche"?"joueurs":tab)));
- ({joueurs:vJoueurs,match:vMatch,temps:vTemps,stats:vStats,donnees:vDonnees,fiche:vFiche,observer:vObs})[tab]();
+ document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.t===(({fiche:"joueurs",videos:"match",video:"match"})[tab]||tab)));
+ ({joueurs:vJoueurs,match:vMatch,temps:vTemps,stats:vStats,donnees:vDonnees,fiche:vFiche,observer:vObs,videos:vVids,video:vVid})[tab]();
 }
 
 /* ===== Joueurs ===== */
@@ -177,7 +177,7 @@ function vMatch(){
  const team=D.players.reduce((a,x)=>a+pts(S(x.id)),0);
  $("#app").innerHTML=`<div class="card"><div class="row" style="align-items:center"><div style="flex:1.4"><div class="clock" id="mclk" style="font-size:40px;text-align:left">${fmt(clockEl())}</div>
  <div class="mut">${D.ended?"🏁 Match terminé":D.clock.run?"▶️ En cours":"⏸️ Chrono arrêté"} · <b style="color:var(--or)">${team} pts</b></div></div>
- <div style="flex:1;display:flex;flex-direction:column;gap:6px"><button class="b ${D.clock.run?"red":"gr"}" style="padding:10px" onclick="togClock2()">${D.clock.run?"⏸ Pause":(D.ended||D.clock.el)?"▶ Reprendre":"▶ Démarrer"}</button><button class="b" style="background:#0f766e;padding:10px" onclick="endMatch()">🏁 Terminer</button></div></div></div>
+ <div style="flex:1;display:flex;flex-direction:column;gap:6px"><button class="b ${D.clock.run?"red":"gr"}" style="padding:10px" onclick="togClock2()">${D.clock.run?"⏸ Pause":(D.ended||D.clock.el)?"▶ Reprendre":"▶ Démarrer"}</button><button class="b" style="background:#0f766e;padding:10px" onclick="endMatch()">🏁 Terminer</button></div></div></div>${vidCard()}
  <div class="card"><h2 style="display:flex;justify-content:space-between;align-items:center">① Choisis la stat<button class="chip" onclick="custDlg()">🎨 Personnaliser</button></h2>
  ${duo?`<p class="mut" style="margin:-4px 0 10px">Mode Duo : choisis <b>2 à 5 stats</b> (①, ②, ③…), puis touche les joueurs dans le même ordre.</p>`:""}<div class="grid">${stOrder().map(t=>{const ms=t.menu?t.menu.filter(x=>armed(x[0])):[],n=t.menu?(ms.length?armed(ms[0][0]):0):armed(t.k),bd=t.menu?ms.map(x=>CN[armed(x[0])-1]).join(""):CN[n-1];
  return`<button class="st" style="position:relative;background:${stCol(t)};${arm?(n?`outline:3px solid #fff;outline-offset:2px;transform:scale(1.06);box-shadow:0 0 18px 4px ${stCol(t)};filter:brightness(1.15);z-index:1`:"opacity:.35;filter:saturate(.5)"):""}" onclick="${t.menu?`stMenu('${t.k}')`:`pickStat('${t.k}')`}">${duo&&n?`<span style="position:absolute;top:2px;right:5px;font-size:${bd.length>1?13:18}px;letter-spacing:-1px">${bd}</span>`:""}${t.l}<small>${ms.length===1?ms[0][1]+" "+ms[0][2]:ms.length?ms.map(x=>x[1]).join(" + "):t.s}</small></button>`}).join("")}<button class="st ${duo?"duoOn":""}" style="background:${duo?"var(--or)":stCol(DUO)};${duo?"outline:3px solid #fff;outline-offset:2px;transform:scale(1.06);z-index:1":""}" onclick="togDuo()">👥 Duo<small>${duo?"Activé":DUO.s}</small></button></div></div>
@@ -208,13 +208,53 @@ function assign(id){if(!arm){sel=id;vMatch();return toast("Choisis d'abord une s
  sel=id;const k=arm;
  if(nx.length){if(!duoPs.length)duoG=Date.now().toString(36);duoPs.push(id);arm=nx.shift();return rec(k,duoG)}
  const g=duoPs.length?duoG:null;arm=null;duoPs=[];duoG=null;rec(k,g)}
-function rec(k,g){D.dirty=true;S(sel)[k]++;if(ALSO[k])S(sel)[ALSO[k]]++;const e={id:sel,k,t:fmt(clockEl())};if(g)e.g=g;D.log.push(e);save();vib();toast("+1 "+LAB[k]+" → "+(D.players.find(x=>x.id===sel)||{}).name);vMatch()}
-function unrec(l){const s=S(l.id);if(s[l.k]>0){s[l.k]--;if(ALSO[l.k]&&s[ALSO[l.k]]>0)s[ALSO[l.k]]--}}
+function rec(k,g){D.dirty=true;S(sel)[k]++;if(ALSO[k])S(sel)[ALSO[k]]++;const e={id:sel,k,t:fmt(clockEl())};if(g)e.g=g;vTag(e);D.log.push(e);save();vib();toast("+1 "+LAB[k]+" → "+(D.players.find(x=>x.id===sel)||{}).name);vMatch()}
+/* ===== Vidéo du match (appli Android uniquement) : chaque stat saisie est repérée dans la vidéo ===== */
+const VID=!!window.AndroidVideo;let vcur=null,vview=null,vfilt=null,vseq=null;
+const vids=()=>D.vids||(D.vids=[]);
+const dfr=d=>d?d.slice(8,10)+"/"+d.slice(5,7)+"/"+d.slice(0,4):"";
+const mo=b=>b>=1073741824?(b/1073741824).toFixed(1).replace(".",",")+" Go":Math.max(1,Math.round(b/1048576))+" Mo";
+function vidCard(){if(!VID)return"";const v=vcur&&vids().find(x=>x.id===vcur);
+ return`<div class="card" style="${v?"border:2px solid var(--rd)":""}"><div class="row" style="align-items:center"><div style="flex:1;min-width:0"><b>🎥 Vidéo du match</b><div class="mut" id="vst">${vStat(v)}</div></div>
+ <div style="display:flex;flex-direction:column;gap:6px;flex:none">${v?`<button class="b" style="background:var(--rd);padding:10px" onclick="vStop()">⏹ Arrêter</button>`:`<button class="b" style="background:var(--rd);padding:10px" onclick="vStart()">⏺ Filmer</button>`}<button class="b sec" style="padding:8px" onclick="vList()">🎬 Vidéos</button></div></div></div>`}
+function vStat(v){return v?(v.start?`🔴 Enregistrement · ${fmt(Date.now()-v.start)} · ${v.tags.length} action(s) repérée(s)`:"Démarrage de la caméra…"):"Filme le match : chaque stat saisie sera repérée dans la vidéo."}
+setInterval(()=>{if(!vcur)return;const e=document.getElementById("vst");if(e)e.textContent=vStat(vids().find(x=>x.id===vcur))},1000);
+function vStart(){if(vcur)return;
+ if(!D.vidOk){if(!confirm("🎥 Filmer le match\n\n• Filmer des mineurs nécessite l'accord de leurs parents.\n• La vidéo reste uniquement sur ce téléphone.\n• Compte environ 5 à 8 Mo par minute.\n\nAstuce : tourne le téléphone à l'horizontale AVANT de lancer l'enregistrement.\n\nContinuer ?"))return;D.vidOk=true}
+ const id="v"+Date.now().toString(36);vids().push({id,date:D.match.date,opp:D.match.opp||"",start:0,dur:0,tags:[]});vcur=id;save();AndroidVideo.start(id);render()}
+function vStop(){if(vcur)AndroidVideo.stop()}
+/* Appelée par l'appli Android : start (heure de début), end (durée), err (message) */
+function vidCb(type,id,val){const v=vids().find(x=>x.id===id);
+ if(type==="start"){if(v){v.start=val;save()}toast("🔴 Enregistrement lancé")}
+ else if(type==="end"){if(v){v.dur=val;if(!v.start)v.start=Date.now()-val}if(vcur===id)vcur=null;save();toast("🎬 Vidéo enregistrée ("+fmt(val)+")");if(tab==="match")render()}
+ else{if(v&&!v.dur)D.vids=vids().filter(x=>x!==v);if(vcur===id)vcur=null;save();toast(val||"Vidéo impossible","var(--rd)");if(tab==="match")render()}}
+function vTag(e){if(!vcur)return;const v=vids().find(x=>x.id===vcur);if(!v||!v.start)return;e.vid=v.id;e.v=Date.now()-v.start;v.tags.push({id:e.id,k:e.k,o:e.v})}
+function untag(l){if(!l.vid)return;const v=vids().find(x=>x.id===l.vid);if(!v)return;const i=v.tags.findIndex(t=>t.o===l.v&&t.id===l.id&&t.k===l.k);if(i>=0)v.tags.splice(i,1)}
+function vList(){tab="videos";render()}
+function vVids(){const L=vids().filter(v=>v.id!==vcur).map(v=>({v,sz:VID?AndroidVideo.size(v.id):-1})).filter(x=>x.sz>0).reverse();
+ $("#app").innerHTML=`<div class="card"><h2 style="display:flex;justify-content:space-between;align-items:center">🎬 Vidéos des matchs<button class="chip" onclick="tab='match';render()">↩ Match</button></h2>
+ <p class="mut" style="margin-top:0">Stockées uniquement sur ce téléphone. Touche une vidéo pour revoir les actions.</p>
+ ${L.map(({v,sz})=>`<div class="pl"><div class="nm" style="flex:1;min-width:0" onclick="vOpen('${v.id}')">${esc(dfr(v.date))}${v.opp?" · vs "+esc(v.opp):""}<div class="mut">${fmt(v.dur)} · ${v.tags.length} action(s) · ${mo(sz)}</div></div><button class="ico" onclick="vOpen('${v.id}')">▶️</button><button class="ico" onclick="AndroidVideo.share('${v.id}')">📤</button><button class="ico" onclick="vDel('${v.id}')">🗑️</button></div>`).join("")||`<p class="mut">Aucune vidéo pour l'instant. Lance « ⏺ Filmer » dans l'onglet Match.</p>`}</div>`}
+function vDel(id){if(!confirm("Supprimer cette vidéo du téléphone ? Les stats du match sont conservées."))return;AndroidVideo.del(id);D.vids=vids().filter(x=>x.id!==id);save();toast("Vidéo supprimée","var(--rd)");vVids()}
+function vOpen(id){vClose();vview=id;vfilt=null;tab="video";AndroidVideo.play(id);render()}
+function vClose(){if(vseq){clearTimeout(vseq.t);vseq=null}if(vview){vview=null;if(VID)AndroidVideo.close()}}
+const vTags=v=>v.tags.filter(t=>!vfilt||t.id===vfilt).sort((a,b)=>a.o-b.o);
+function vGo(o){if(vseq){clearTimeout(vseq.t);vseq=null;vVid()}AndroidVideo.seek(Math.max(0,o-5000))}
+function vChain(){if(vseq){clearTimeout(vseq.t);vseq=null;return vVid()}const v=vids().find(x=>x.id===vview),T=v?vTags(v):[];if(!T.length)return toast("Aucune action","var(--yl)");vseq={i:0,T};vStep();vVid()}
+function vStep(){if(!vseq)return;if(vseq.i>=vseq.T.length){vseq=null;toast("Fin des actions");return vVid()}const t=vseq.T[vseq.i++],p=D.players.find(x=>x.id===t.id);AndroidVideo.seek(Math.max(0,t.o-5000));toast(vseq.i+"/"+vseq.T.length+" · "+(p?p.name+" — ":"")+LAB[t.k],"var(--line)");vseq.t=setTimeout(vStep,8000)}
+function vVid(){const v=vids().find(x=>x.id===vview);if(!v){tab="videos";return render()}
+ const ps=[...new Set(v.tags.map(t=>t.id))].map(id=>D.players.find(p=>p.id===id)).filter(Boolean),T=vTags(v),on="background:var(--or);color:#fff;border-color:var(--or)";
+ $("#app").innerHTML=`<div class="card"><h2 style="display:flex;justify-content:space-between;align-items:center">${esc(dfr(v.date))}${v.opp?" · vs "+esc(v.opp):""}<button class="chip" onclick="vClose();tab='videos';render()">✖ Fermer</button></h2>
+ <p class="mut" style="margin-top:0">Touche une action : la vidéo repart 5 s avant.</p>
+ <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"><button class="chip" style="${!vfilt?on:""}" onclick="vfilt=null;vVid()">Tous (${v.tags.length})</button>${ps.map(p=>`<button class="chip" style="${vfilt===p.id?on:""}" onclick="vfilt='${p.id}';vVid()">${p.num?"#"+esc(p.num)+" ":""}${esc(p.name)} (${v.tags.filter(t=>t.id===p.id).length})</button>`).join("")}</div>
+ <button class="b" style="width:100%;margin-bottom:10px;${vseq?"background:var(--rd)":""}" onclick="vChain()">${vseq?"⏹ Arrêter l'enchaînement":"⏯ Enchaîner les actions"+(vfilt?" du joueur":"")+" ("+T.length+")"}</button>
+ <div class="log" style="max-height:none">${T.map(t=>{const p=D.players.find(x=>x.id===t.id);return`<div style="padding:9px 0;border-bottom:1px solid var(--line)" onclick="vGo(${t.o})"><b style="color:var(--or)">▶ ${fmt(t.o)}</b> · ${esc(p?p.name:"?")} — ${LAB[t.k]}</div>`}).join("")||`<span class="mut">Aucune action repérée dans cette vidéo</span>`}</div></div>`}
+function unrec(l){untag(l);const s=S(l.id);if(s[l.k]>0){s[l.k]--;if(ALSO[l.k]&&s[ALSO[l.k]]>0)s[ALSO[l.k]]--}}
 function undo(){const l=D.log.pop();if(!l)return toast("Rien à annuler","var(--line)");unrec(l);let msg=LAB[l.k];
  if(l.g&&duoPs.length&&l.g===duoG){nx.unshift(arm);arm=l.k;duoPs.pop();if(!duoPs.length)duoG=null}/* duo en cours : on revient au joueur précédent */
  else if(l.g)while(D.log.length&&D.log[D.log.length-1].g===l.g){const m=D.log.pop();unrec(m);msg=LAB[m.k]+" + "+msg}
  save();toast("Annulé : "+msg,"var(--line)");vMatch()}
-function minus(){const MK=KS.filter(k=>k!=="reb"&&k!=="per"),ch=prompt("Retirer 1 à quelle stat ?\n"+MK.map((k,i)=>(i+1)+". "+LAB[k]).join("\n"));const i=parseInt(ch)-1;if(!(i>=0&&i<MK.length))return;const k=MK[i],s=S(sel);if(s[k]>0){s[k]--;if(ALSO[k]&&s[ALSO[k]]>0)s[ALSO[k]]--;for(let j=D.log.length-1;j>=0;j--)if(D.log[j].id===sel&&D.log[j].k===k){D.log.splice(j,1);break}save();toast("−1 "+LAB[k],"var(--line)")}vMatch()}
+function minus(){const MK=KS.filter(k=>k!=="reb"&&k!=="per"),ch=prompt("Retirer 1 à quelle stat ?\n"+MK.map((k,i)=>(i+1)+". "+LAB[k]).join("\n"));const i=parseInt(ch)-1;if(!(i>=0&&i<MK.length))return;const k=MK[i],s=S(sel);if(s[k]>0){s[k]--;if(ALSO[k]&&s[ALSO[k]]>0)s[ALSO[k]]--;for(let j=D.log.length-1;j>=0;j--)if(D.log[j].id===sel&&D.log[j].k===k){untag(D.log[j]);D.log.splice(j,1);break}save();toast("−1 "+LAB[k],"var(--line)")}vMatch()}
 
 /* ===== Temps de jeu ===== */
 let tick=null;

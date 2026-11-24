@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Pas d'Internet, pas de localisation. Caméra : uniquement pour scanner le QR code de synchronisation -->
+<!-- Pas d'Internet, pas de localisation. Caméra : scan du QR code de synchronisation et vidéo du match (gardée sur le téléphone) -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <application
         android:allowBackup="false"
