@@ -262,10 +262,10 @@ public class MainActivity extends Activity implements LifecycleOwner {
         root.setOrientation(land ? LinearLayout.HORIZONTAL : LinearLayout.VERTICAL);
         LinearLayout.LayoutParams pl, wl;
         if (land) {
-            pl = new LinearLayout.LayoutParams((int) (dm.widthPixels * 0.5f), ViewGroup.LayoutParams.MATCH_PARENT);
+            pl = new LinearLayout.LayoutParams((int) (dm.widthPixels * 0.33f), ViewGroup.LayoutParams.MATCH_PARENT);
             wl = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f);
         } else {
-            pl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (int) Math.min(dm.widthPixels * 9f / 16f, dm.heightPixels * 0.35f));
+            pl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (int) Math.min(dm.widthPixels * 9f / 16f, dm.heightPixels * 0.2f));
             wl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f);
         }
         panel.setLayoutParams(pl);
