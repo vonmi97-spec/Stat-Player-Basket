@@ -127,8 +127,31 @@ const stCol=t=>((D.ui||{}).col||{})[t.k]||t.c;
 const DUO={k:"duo",l:"👥 Duo",s:"2 à 5 joueurs",c:"#475569"};
 const pts=s=>z(s.p2)*2+z(s.p3)*3+z(s.lfR);
 const ev=s=>pts(s)+z(s.reb)+z(s.pas)+z(s.int)+z(s.ctr)+z(s.def)+z(s.fsu)-z(s.per)-z(s.fau)-z(s.lfM)-z(s.p2M)-z(s.p3M);
-/* Note générale /100 : 40 de base + 4 par point d'évaluation (bornée 0–100) */
-const note=s=>Math.max(0,Math.min(100,Math.round(40+4*ev(s))));
+/* Note générale /100 : adresse /30 + attaque /20 + rebonds & passes /20 + défense /20 + discipline /10 */
+const cap=(v,m)=>Math.max(0,Math.min(m,v));
+function tsP(s){const fta=z(s.lfR)+z(s.lfM),d=2*(fgA(s)+.44*fta);return d?pts(s)/d:null}
+function noteD(s){const fta=z(s.lfR)+z(s.lfM),att=fgA(s)+fta,ts=tsP(s);
+ const raw=ts==null?15:cap(ts*50,30),w=Math.min(1,att/6),adr=w*raw+(1-w)*15;
+ const P=[["🎯 Adresse",adr,30],["🏀 Attaque",cap(pts(s)*2,20),20],["🤝 Reb. & passes",cap(z(s.reb)*2+z(s.pas)*2.5,20),20],["🛡️ Défense",cap(z(s.def)*3+z(s.int)*4+z(s.ctr)*4+z(s.perP)*3+z(s.fsu)*1.5,20),20],["⚖️ Discipline",cap(10-1.5*z(s.per)-2*Math.max(0,z(s.fau)-1),10),10]];
+ return{t:Math.round(P.reduce((a,x)=>a+x[1],0)),P,ts}}
+const note=s=>noteD(s).t;
+/* Analyse de l'adresse au tir */
+function shootTxt(s){const r=(m,a)=>a?Math.round(m*100/a):null,p2A=z(s.p2)+z(s.p2M),p3A=z(s.p3)+z(s.p3M),lfA=z(s.lfR)+z(s.lfM),r2=r(z(s.p2),p2A),r3=r(z(s.p3),p3A),rl=r(z(s.lfR),lfA),rf=r(fgM(s),fgA(s)),ts=tsP(s),o=[];
+ if(!fgA(s)&&!lfA)return["Aucun tir tenté sur ce match."];
+ if(p2A)o.push(r2>=50?`✅ Très bonne réussite à 2 pts (${r2} %).`:r2>=35?`➖ Réussite correcte à 2 pts (${r2} %).`:`⚠️ Réussite à 2 pts à travailler (${r2} %) : finitions près du panier, tirs mieux préparés.`);
+ if(p3A)o.push(p3A<3?`ℹ️ Peu de tirs à 3 pts (${z(s.p3)}/${p3A}) : pas assez pour juger.`:r3>=33?`✅ Bonne adresse à 3 pts (${r3} %).`:r3>=20?`➖ Adresse moyenne à 3 pts (${r3} %).`:`⚠️ Peu efficace à 3 pts (${r3} %) : privilégier des tirs plus proches.`);
+ if(lfA)o.push(lfA<2?`ℹ️ ${z(s.lfR)}/${lfA} aux lancers francs.`:rl>=70?`✅ Fiable aux lancers francs (${rl} %).`:rl>=50?`➖ Lancers francs corrects (${rl} %).`:`⚠️ Lancers francs à travailler (${rl} %).`);
+ if(p3A>=4&&p3A>p2A&&r3!=null&&r2!=null&&r3+15<r2)o.push("🧭 Sélection de tirs : beaucoup de 3 pts alors qu'il est bien plus adroit à 2 pts.");
+ if(fgA(s)>=10&&rf<30)o.push("🧭 Beaucoup de tirs pour peu de réussite : chercher de meilleures positions ou la passe.");
+ if(fgA(s)&&fgA(s)<=3&&pts(s)<4)o.push("🧭 Peu de tirs tentés : il peut oser davantage.");
+ if(ts!=null&&fgA(s)+lfA>=4)o.push(`📊 Efficacité réelle au tir : ${Math.round(ts*100)} % (${ts>=.55?"excellente":ts>=.45?"bonne":ts>=.35?"moyenne":"faible"}).`);
+ return o}
+function analyseHtml(s,titre){const N=noteD(s),p2A=z(s.p2)+z(s.p2M),p3A=z(s.p3)+z(s.p3M),lfA=z(s.lfR)+z(s.lfM),c=(m,a)=>`<div><b>${m}/${a}</b><span>${a?Math.round(m*100/a)+" %":"–"}</span></div>`;
+ return`<div class="row" style="gap:12px;align-items:center"><div class="nt" style="background:${nCol(N.t)};font-size:30px;padding:8px 14px;flex:none">${N.t}</div><div><b style="font-size:17px">${nLab(N.t)}</b><div class="mut">Note générale /100${titre?" · "+titre:""}</div></div></div>
+ <div style="margin:12px 0">${N.P.map(([l,v,m])=>`<div style="display:flex;align-items:center;gap:8px;margin:5px 0"><span style="width:132px;font-size:13px">${l}</span><div style="flex:1;height:8px;background:#0b1222;border-radius:5px;overflow:hidden"><div style="width:${Math.round(v*100/m)}%;height:100%;background:${nCol(v*100/m)}"></div></div><b style="width:44px;text-align:right;font-size:13px">${Math.round(v)}/${m}</b></div>`).join("")}</div>
+ <h2 style="font-size:15px;margin:14px 0 8px">🎯 Réussite au tir</h2>
+ <div class="score">${c(z(s.p2),p2A).replace("<span>","<span>2 pts · ")}${c(z(s.p3),p3A).replace("<span>","<span>3 pts · ")}${c(z(s.lfR),lfA).replace("<span>","<span>LF · ")}${c(fgM(s),fgA(s)).replace("<span>","<span>Tirs · ")}</div>
+ <div style="margin-top:10px;display:flex;flex-direction:column;gap:5px">${shootTxt(s).map(t=>`<div style="font-size:13px">${t}</div>`).join("")}</div>`}
 const nCol=n=>n>=80?"#16a34a":n>=65?"#0d9488":n>=50?"#ca8a04":"#dc2626";
 const nLab=n=>n>=80?"Excellent":n>=65?"Bon match":n>=50?"Correct":"À améliorer";
 const nB=n=>n==null?"–":`<span class="nt" style="background:${nCol(n)}">${n}</span>`;
@@ -257,7 +280,7 @@ function minus(){const MK=KS.filter(k=>k!=="reb"&&k!=="per"),ch=prompt("Retirer 
 /* ===== Temps de jeu ===== */
 let tick=null;
 function commitTimes(){if(!D.clock.run)return;const now=Date.now(),d=now-D.clock.start;for(const id in D.onCourt)if(D.onCourt[id])D.time[id]=(D.time[id]||0)+d;D.clock.el+=d;D.clock.start=now}
-function selCard(){if(!D.players.length)return"";if(!sel||!D.players.find(x=>x.id===sel))sel=D.players[0].id;const s=S(sel),p=D.players.find(x=>x.id===sel),lfT=s.lfR+s.lfM;const cur=KS.some(k=>z(s[k])),L=cur?null:D.history.filter(m=>m.players[sel]).sort((a,b)=>a.date<b.date?1:-1)[0];return`<div class="card"><h2>🧬 ${L?"Profil du dernier match":"Profil sur ce match"} · ${esc(p.name)}</h2>${L?`<p class="mut" style="margin:-4px 0 10px">${esc(dfr(L.date))}${L.opp?" vs "+esc(L.opp):""}</p>`:""}${archHtml(archOf(L?L.players[sel]:s,1),1)}</div><div class="card"><h2 style="display:flex;justify-content:space-between;align-items:center">${esc(p.name)}<button class="chip" onclick="openFiche('${p.id}')">📈 Fiche (${histOf(p.id).length})</button></h2>
+function selCard(){if(!D.players.length)return"";if(!sel||!D.players.find(x=>x.id===sel))sel=D.players[0].id;const s=S(sel),p=D.players.find(x=>x.id===sel),lfT=s.lfR+s.lfM;const cur=KS.some(k=>z(s[k])),L=cur?null:D.history.filter(m=>m.players[sel]).sort((a,b)=>a.date<b.date?1:-1)[0];return`<div class="card"><h2>🧬 ${L?"Profil du dernier match":"Profil sur ce match"} · ${esc(p.name)}</h2>${L?`<p class="mut" style="margin:-4px 0 10px">${esc(dfr(L.date))}${L.opp?" vs "+esc(L.opp):""}</p>`:""}${archHtml(archOf(L?L.players[sel]:s,1),1)}<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px">${analyseHtml(L?L.players[sel]:s,"")}</div></div><div class="card"><h2 style="display:flex;justify-content:space-between;align-items:center">${esc(p.name)}<button class="chip" onclick="openFiche('${p.id}')">📈 Fiche (${histOf(p.id).length})</button></h2>
  <div class="score"><div><b>${pts(s)}</b><span>Points</span></div><div><b>${s.reb}</b><span>Rebonds</span></div><div><b>${s.pas}</b><span>Passes</span></div><div><b>${s.lfR}/${lfT}</b><span>LF</span></div>
  <div><b>${s.ctr+s.int}</b><span>Contres + int.</span></div><div><b>${s.def}</b><span>Déf. réussies</span></div><div><b>${s.per}</b><span>Pertes</span></div><div><b style="color:${s.fau>=5?"var(--rd)":"inherit"}">${s.fau}</b><span>Fautes</span></div></div>
  ${s.fau>=5?`<p style="color:var(--rd);margin:8px 0 0;font-weight:700">⚠️ 5 fautes – joueur éliminé</p>`:""}</div>`}
@@ -406,6 +429,7 @@ function vFiche(){
  $("#app").innerHTML=`<button class="b sec" style="margin-bottom:12px" onclick="tab='joueurs';render()">‹ Joueurs</button>
  <div class="card"><div class="row" style="gap:12px"><div class="num" style="width:56px;height:56px;font-size:22px;flex:none">${esc(p.num||"–")}</div><div><h2 style="margin:0;font-size:20px">${esc(p.name)}</h2><div class="mut">${n} match${n>1?"s":""} enregistré${n>1?"s":""}</div></div>${nm!=null?`<div style="text-align:center;flex:none"><div class="nt" style="background:${nCol(nm)};font-size:22px;padding:6px 10px">${nm}</div><div class="mut" style="font-size:11px;margin-top:3px">Note moy. /100</div></div>`:""}</div></div>
  ${D.history.some(m=>m.players[fp])?`<div class="card" style="padding-bottom:4px">${typeTabs()}</div>`:""}
+ <div class="card"><h2>📋 Analyse du dernier match</h2>${n?analyseHtml(H[0].s,esc(dfr(H[0].m.date))+(H[0].m.opp?" vs "+esc(H[0].m.opp):"")):analyseHtml(S(fp),"match en cours")}</div>
  <div class="card"><h2 style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap">🧬 Archétype${n>1?`<span style="display:flex;gap:6px"><button class="chip ${archM!=="all"?"on":""}" onclick="archM='last';vFiche()">Dernier match</button><button class="chip ${archM==="all"?"on":""}" onclick="archM='all';vFiche()">Moyenne</button></span>`:""}</h2>
  ${n?(archM==="all"&&n>1?archHtml(archOf(T,n)):archHtml(archOf(H[0].s,1))):archHtml(archOf(S(fp),1))}
  <p class="mut" style="margin:10px 0 0;font-size:12px">${n?(archM==="all"&&n>1?`Calculé sur la moyenne de ${n} matchs enregistrés.`:`Calculé sur le dernier match enregistré : ${esc(dfr(H[0].m.date))}${H[0].m.opp?" vs "+esc(H[0].m.opp):""}.`):"Calculé sur le match en cours (aucun match enregistré)."}</p></div>
@@ -420,7 +444,7 @@ function vFiche(){
 }
 function delHist(mid){if(!confirm("Retirer ce match de la fiche du joueur ?"))return;const m=D.history.find(x=>x.id===mid);if(m){delete m.players[fp];if(!Object.keys(m.players).length){D.history=D.history.filter(x=>x!==m);if(D.curHist===mid)D.curHist=null}}save();vFiche()}
 function shareFiche(){const p=D.players.find(x=>x.id===fp),H=histOf(fp);let t=`🏀 Fiche de ${p.name}${p.num?" (#"+p.num+")":""} – ${H.length} match(s)\n\n`;
- if(H.length){const T={};KS.forEach(k=>T[k]=0);H.forEach(({s})=>KS.forEach(k=>T[k]+=s[k]||0));const A=archOf(T,H.length);const B=archOf(H[0].s,1);t+=`🧬 Archétype (dernier match) : ${B.m.i} ${B.m.l}${B.s&&B.s!==B.m?" (secondaire : "+B.s.l+")":""}\n`+(H.length>1?`🧬 Archétype (moyenne) : ${A.m.i} ${A.m.l}\n`:"")+"\n"}
+ if(H.length){const T={};KS.forEach(k=>T[k]=0);H.forEach(({s})=>KS.forEach(k=>T[k]+=s[k]||0));const A=archOf(T,H.length);const B=archOf(H[0].s,1),N0=noteD(H[0].s);t+=`📋 Dernier match (${H[0].m.date}${H[0].m.opp?" vs "+H[0].m.opp:""}) : note ${N0.t}/100 – ${nLab(N0.t)}\n`+N0.P.map(([l,v,m])=>`   ${l} ${Math.round(v)}/${m}`).join("\n")+"\n"+shootTxt(H[0].s).map(x=>"   "+x).join("\n")+"\n";t+=`🧬 Archétype (dernier match) : ${B.m.i} ${B.m.l}${B.s&&B.s!==B.m?" (secondaire : "+B.s.l+")":""}\n`+(H.length>1?`🧬 Archétype (moyenne) : ${A.m.i} ${A.m.l}\n`:"")+"\n"}
  H.forEach(({m,s})=>{t+=`${m.date}${m.opp?" vs "+m.opp:""} : ${pts(s)} pts, ${s.reb} reb (${z(s.rebO)} off./${z(s.rebD)} déf.), ${s.pas} passes, ${z(s.int)} int, ${s.ctr} ctr, ${s.def} déf, ${s.per} pertes (${z(s.perP)} prov./${z(s.perU)} pers.), ${s.fau} F, ${z(s.fsu)} FS, LF ${s.lfR}/${s.lfR+s.lfM}, ${fmt(s.min||0)}, note ${note(s)}/100\n`});
  const nm=avgNote(fp);if(nm!=null)t+=`\nNote moyenne : ${nm}/100\n`;
  const OB=D.obs.filter(o=>o.pid===fp).sort((a,b)=>b.ts-a.ts);if(OB.length){t+=`\n📝 Notes :\n`;OB.forEach(o=>{t+=`- [${o.cat}] ${o.date}${o.opp?" vs "+o.opp:""} : ${o.txt}\n`})}
