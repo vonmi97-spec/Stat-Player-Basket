@@ -46,7 +46,7 @@ nav button b{display:block;font-size:20px;margin-bottom:2px}nav button.on{color:
 .clock{font-size:46px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;letter-spacing:2px}
 .tg{width:54px;height:30px;border-radius:15px;background:var(--line);position:relative;border:0;flex:none}
 .tg::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:.2s}
-.tg.on{background:var(--gr)}.tg.on::after{left:27px}
+.tg.on{background:var(--gr)}.tg.on::after{left:27px}.tg.sm{width:38px;height:22px;display:inline-block}.tg.sm::after{width:16px;height:16px}.tg.sm.on::after{left:19px}
 table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:7px 4px;text-align:center;border-bottom:1px solid var(--line)}
 th{color:var(--mut);font-weight:600;font-size:11px}td:first-child,th:first-child{text-align:left}
 .tw{overflow-x:auto}
@@ -177,6 +177,8 @@ function ptime(id){const t=D.time[id]||0;return t+(D.clock.run&&D.onCourt[id]?Da
 function setCut(t,l,r,sl,sr){const h=document.documentElement.style,W=innerWidth;let pl=0,pr=0,mw="none";
  if(t&&r>l){const c=(l+r)/2;if(c<W/3)pl=r+4;else if(c>W*2/3)pr=W-l+4;else mw=Math.max(90,l-22)+"px"}
  h.setProperty("--cut",t+"px");h.setProperty("--cpl",pl+"px");h.setProperty("--cpr",pr+"px");h.setProperty("--h1w",mw);h.setProperty("--sl",(sl||0)+"px");h.setProperty("--sr",(sr||0)+"px")}
+/* Temps de jeu des joueurs dans l'onglet Match */
+setInterval(()=>{if(tab!=="match"||!D.clock||!D.clock.run)return;D.players.forEach(p=>{const e=document.getElementById("mt_"+p.id);if(e&&D.onCourt[p.id])e.textContent="▶ "+fmt(ptime(p.id))})},1000);
 /* ===== Bandeau du haut : se masque quand on descend, réapparaît quand on remonte ===== */
 {let ly=0;addEventListener("scroll",()=>{const y=scrollY,h=document.querySelector("header");if(!h)return;if(y<40||y<ly-6)h.classList.remove("hide");else if(y>ly+6)h.classList.add("hide");ly=y},{passive:true})}
 /* ===== Navigation ===== */
@@ -227,7 +229,7 @@ function vMatch(){
  <div class="card" style="${arm?"border:2px solid var(--or)":""}"><h2>② ${!arm?"Puis touche le joueur":(nx.length||duoPs.length)?`Joueur ${duoPs.length+1} → « ${LAB[arm]} »`:duo?`Attribuer « ${LAB[arm]} » à… <span class="mut" style="font-weight:400">(ou choisis une 2e stat)</span>`:`Attribuer « ${LAB[arm]} » à…`}</h2>
  ${duoPs.length?`<p class="mut" style="margin:-4px 0 10px">${duoPs.map((id,i)=>`Joueur ${i+1} : <b>${esc((D.players.find(x=>x.id===id)||{}).name||"?")}</b> ✅`).join(" · ")}${nx.length?` · encore ${nx.length+1}`:""}</p>`:""}
  ${arm?"":`<p class="mut" style="margin:-4px 0 10px">Sélectionne d'abord une stat ci-dessus.</p>`}
- <div class="grid" style="grid-template-columns:repeat(2,1fr)">${[...D.players].sort((a,b)=>(D.onCourt[b.id]?1:0)-(D.onCourt[a.id]?1:0)).map(x=>{const q=S(x.id);return`<button class="st" style="position:relative;background:${x.id===sel?"#334155":"#0b1222"};border:1px solid ${q.fau>=5?"var(--rd)":"var(--line)"};display:flex;align-items:center;gap:8px;text-align:left;padding:8px;opacity:${arm&&!duoPs.includes(x.id)?1:.6}" onclick="assign('${x.id}')">${duoPs.includes(x.id)?`<span style="position:absolute;top:2px;right:6px">${CN[duoPs.indexOf(x.id)]}</span>`:""}<span class="num" style="width:32px;height:32px;font-size:14px">${esc(x.num||"–")}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.name)}${D.onCourt[x.id]?" 🟢":""}<small>${pts(q)} pts · ${q.fau} F${q.fau>=5?" ⚠️":""}</small></span></button>`}).join("")}</div></div>`;
+ <div class="grid" style="grid-template-columns:repeat(2,1fr)">${[...D.players].sort((a,b)=>(D.onCourt[b.id]?1:0)-(D.onCourt[a.id]?1:0)).map(x=>{const q=S(x.id);return`<button class="st" style="position:relative;background:${x.id===sel?"#334155":"#0b1222"};border:1px solid ${q.fau>=5?"var(--rd)":"var(--line)"};display:flex;align-items:center;gap:8px;text-align:left;padding:8px;opacity:${arm&&!duoPs.includes(x.id)?1:.6}" onclick="assign('${x.id}')">${duoPs.includes(x.id)?`<span style="position:absolute;top:2px;right:6px">${CN[duoPs.indexOf(x.id)]}</span>`:""}<span class="num" style="width:32px;height:32px;font-size:14px">${esc(x.num||"–")}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.name)}<small>${pts(q)} pts · ${q.fau} F${q.fau>=5?" ⚠️":""}</small><span style="display:flex;align-items:center;gap:6px;margin-top:5px" onclick="event.stopPropagation();togCourt('${x.id}')"><span class="tg sm ${D.onCourt[x.id]?"on":""}"></span><small id="mt_${x.id}" style="margin:0;color:${D.onCourt[x.id]?"var(--gr)":"var(--mut)"}">${D.onCourt[x.id]?"▶":"⏸"} ${fmt(ptime(x.id))}</small></span></span></button>`}).join("")}</div></div>`;
  
 }
 /* Mode Duo : arm = stat en cours, nx = stats suivantes ; duoPs = joueurs déjà servis, duoG = identifiant de l'action groupée */
@@ -328,7 +330,7 @@ function resetStats(id){const p=id&&D.players.find(x=>x.id===id);
  if(p){delete D.stats[id];D.log=D.log.filter(l=>{if(l.id===id){untag(l);return false}return true})}else{D.log.forEach(untag);D.stats={};D.log=[]}
  save();toast(p?"Stats de "+p.name+" remises à zéro":"Stats du match remises à zéro","var(--rd)");vTemps()}
 function resetClock(){if(!confirm("Remettre le chrono et tous les temps de jeu à zéro ?"))return;D.clock={run:false,start:0,el:0};D.time={};save();vTemps()}
-function togCourt(id){commitTimes();if(!D.onCourt[id]&&Object.values(D.onCourt).filter(Boolean).length>=5)toast("Attention : déjà 5 joueurs sur le terrain","var(--yl)");D.onCourt[id]=!D.onCourt[id];save();vTemps()}
+function togCourt(id){commitTimes();if(!D.onCourt[id]&&Object.values(D.onCourt).filter(Boolean).length>=5)toast("Attention : déjà 5 joueurs sur le terrain","var(--yl)");D.onCourt[id]=!D.onCourt[id];save();vib();render()}
 setInterval(()=>{if(D.clock.run){commitTimes();save()}},10000);
 
 /* ===== Stats ===== */
