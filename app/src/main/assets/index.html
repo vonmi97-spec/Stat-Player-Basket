@@ -13,7 +13,7 @@
 <meta name="theme-color" content="#0f172a">
 <title>Stat Player : Basket</title>
 <style>
-:root{--bg:#0f172a;--card:#1e293b;--line:#334155;--txt:#f1f5f9;--mut:#94a3b8;--or:#f97316;--gr:#22c55e;--rd:#ef4444;--bl:#3b82f6;--yl:#eab308;--pu:#a855f7}
+:root{--bg:#0b1120;--card:#151f32;--line:#2a3650;--txt:#f1f5f9;--mut:#94a3b8;--or:#f97316;--gr:#22c55e;--rd:#ef4444;--bl:#3b82f6;--yl:#eab308;--pu:#a855f7}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;font-family:system-ui,-apple-system,Roboto,sans-serif;background:var(--bg);color:var(--txt);padding-bottom:calc(72px + env(safe-area-inset-bottom));user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none}
 input{-webkit-user-select:text;user-select:text}
@@ -58,6 +58,38 @@ th{color:var(--mut);font-weight:600;font-size:11px}td:first-child,th:first-child
 .toast{position:fixed;bottom:calc(84px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--gr);color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;z-index:30;opacity:0;transition:.25s;pointer-events:none}
 .toast.s{opacity:1}
 .hid{display:none!important}
+/* ===== Refonte visuelle ===== */
+:root{--bd:rgba(148,163,184,.14);--in:#0d1526;--orS:rgba(249,115,22,.16)}
+body{background:radial-gradient(120% 60% at 50% -10%,#16223a 0%,var(--bg) 60%) fixed;letter-spacing:.1px}
+header{background:rgba(8,13,26,.92);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-bottom:1px solid var(--bd);box-shadow:0 2px 0 -1px var(--or)}
+header h1{display:flex;align-items:center;gap:7px;font-size:15px;font-weight:800;letter-spacing:.2px}header h1 span{font-weight:700}
+header .logo{width:28px;height:28px;flex:none;filter:drop-shadow(0 2px 4px rgba(249,115,22,.35))}
+header #who{margin-left:auto;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:4px 10px;font-size:12px;background:var(--in)}
+.ico.hb{display:flex;align-items:center;padding:6px;color:var(--mut);border-radius:10px}.ico.hb svg{width:20px;height:20px}.ico.hb:active{background:var(--orS);color:var(--or)}
+.card{background:linear-gradient(180deg,#17223a,var(--card));border:1px solid var(--bd);border-radius:18px;padding:16px;margin-bottom:12px;box-shadow:0 6px 18px -10px rgba(0,0,0,.6)}
+h2{font-size:15px;font-weight:800;letter-spacing:.2px;margin:0 0 12px}
+input,select,textarea{background:var(--in);border-color:var(--bd);border-radius:12px}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--or);box-shadow:0 0 0 3px var(--orS)}
+button{font-family:inherit;cursor:pointer}button.b{border-radius:12px;font-weight:700;box-shadow:0 4px 12px -6px rgba(0,0,0,.6);transition:transform .08s,filter .15s}
+button.b:active,.st:active,.chip:active{transform:scale(.97);filter:brightness(1.1)}
+button.sec{background:#26324a;box-shadow:none}
+.pl{background:var(--in);border:1px solid var(--bd);border-radius:14px}
+.num{background:linear-gradient(135deg,#fb923c,#ea580c);box-shadow:0 3px 8px -3px rgba(234,88,12,.7)}
+.chip{background:var(--in);border-color:var(--bd);font-weight:600}.chip.on{background:var(--or);border-color:var(--or);color:#fff}
+.st{border-radius:14px;box-shadow:inset 0 -3px 0 rgba(0,0,0,.18),0 4px 10px -6px rgba(0,0,0,.7);transition:transform .08s}
+.score div{background:var(--in);border:1px solid var(--bd);border-radius:12px}
+.score b{font-variant-numeric:tabular-nums}
+.clock{font-variant-numeric:tabular-nums}
+.tg{background:#334155}
+nav{background:rgba(8,13,26,.94);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-top:1px solid var(--bd);padding-top:4px}
+nav button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 0 8px;font-size:11px;font-weight:600;transition:color .15s}
+nav button b{display:flex;align-items:center;justify-content:center;width:54px;height:30px;border-radius:15px;margin:0;transition:background .2s}
+nav button b svg{width:22px;height:22px}
+nav button.on{color:var(--or)}nav button.on b{background:var(--orS)}
+@media (orientation:landscape){nav button{flex-direction:row;justify-content:center;gap:4px;padding:2px 0 4px}nav button b{width:34px;height:26px}nav button b svg{width:18px;height:18px}}
+.toast{border-radius:14px;font-weight:600;box-shadow:0 8px 20px -8px rgba(0,0,0,.7)}
+#ov{background:rgba(5,9,20,.88);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+
 textarea{min-height:110px;resize:vertical}
 .nt{display:inline-block;min-width:40px;padding:3px 7px;border-radius:8px;font-weight:800;color:#fff}
 .ob{background:#0b1222;border-radius:10px;padding:10px;margin-bottom:8px;border-left:4px solid var(--or)}
@@ -67,15 +99,14 @@ p{line-height:1.45}
 </style>
 </head>
 <body>
-<header><h1>🏀 Stat Player : <span>Basket</span></h1><button id="who" class="chip" style="max-width:105px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:3px 9px;font-size:12px" onclick="tab='donnees';render()"></button><button class="ico" onclick="lockNow()" title="Verrouiller">🔒</button></header>
+<header><h1><svg class="logo" viewBox="0 0 108 108"><path fill="#F97316" d="M46,24a24,24 0,1 1,0 48a24,24 0,1 1,0 -48z"/><path fill="none" stroke="#0b1120" stroke-width="3" stroke-linecap="round" d="M22,48h48M46,24v48M29,31c8,8 8,26 0,34M63,31c-8,8 -8,26 0,34"/><path fill="#fdba74" stroke="#0b1120" stroke-width="3" stroke-linejoin="round" d="M55,63h8v14h-8zM64,55h8v22h-8zM73,45h8v32h-8z"/></svg>Stat Player <span>Basket</span></h1><button id="who" class="chip" onclick="tab='donnees';render()"></button><button class="ico hb" onclick="tab='donnees';render()" title="Données et compte"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></button><button class="ico hb" onclick="lockNow()" title="Verrouiller"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button></header>
 <main id="app"></main>
 <nav id="nav">
- <button data-t="joueurs"><b>👥</b>Joueurs</button>
- <button data-t="match"><b>📋</b>Match</button>
- <button data-t="temps"><b>⏱️</b>Temps</button>
- <button data-t="stats"><b>📊</b>Stats</button>
- <button data-t="observer"><b>📝</b>Note</button>
- <button data-t="donnees"><b>🛡️</b>Données</button>
+ <button data-t="joueurs"><b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></b>Équipe</button>
+ <button data-t="match"><b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2v20M5.2 4.8c3.2 3.4 3.2 11 0 14.4M18.8 4.8c-3.2 3.4-3.2 11 0 14.4"/></svg></b>Match</button>
+ <button data-t="temps"><b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6M19 6l1.5-1.5"/></svg></b>Temps</button>
+ <button data-t="stats"><b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M8 17v-4M13 17V8M18 17v-7"/></svg></b>Stats</button>
+ <button data-t="observer"><b><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></b>Notes</button>
 </nav>
 <div id="ov" class="hid"></div>
 <div class="toast" id="toast"></div>
@@ -216,7 +247,7 @@ function delP(id){if(!confirm("Supprimer ce joueur et toutes ses statistiques ?"
 
 /* ===== Match (saisie stats) ===== */
 function vMatch(){
- if(!D.players.length){$("#app").innerHTML=`<div class="card"><p>Ajoute d'abord des joueurs dans l'onglet <b>Joueurs</b>.</p></div>`;return}
+ if(!D.players.length){$("#app").innerHTML=`<div class="card"><p>Ajoute d'abord des joueurs dans l'onglet <b>Équipe</b>.</p></div>`;return}
  if(!sel||!D.players.find(p=>p.id===sel))sel=D.players[0].id;
  const s=S(sel),p=D.players.find(x=>x.id===sel),lfT=s.lfR+s.lfM;
  const team=D.players.reduce((a,x)=>a+pts(S(x.id)),0);
@@ -345,7 +376,7 @@ function vStats(){
  <div class="card"><h2>Feuille de stats</h2><div class="tw"><table><tr><th>Joueur</th><th>Min</th><th>Pts</th><th>Tirs</th><th>% ✓</th><th>% ✗</th><th>3 pts</th><th>LF</th><th>Reb</th><th>Int</th><th>Ctr</th><th>Pas</th><th>Déf</th><th>Pdb</th><th>F</th><th>FS</th><th>Éval</th><th>Note</th></tr>
  ${rows.map(({p,s})=>`<tr><td>${p.num?"#"+esc(p.num)+" ":""}${esc(p.name)}</td><td>${fmt(ptime(p.id))}</td><td><b>${pts(s)}</b></td><td>${fgM(s)}/${fgA(s)}</td><td style="color:#4ade80">${pct(fgM(s),fgA(s))}</td><td style="color:#f87171">${pct(fgA(s)-fgM(s),fgA(s))}</td><td>${s.p3}/${s.p3+s.p3M}</td><td>${s.lfR}/${s.lfR+s.lfM}</td><td>${s.reb}${z(s.rebO)+z(s.rebD)?`<br><small class="mut">${z(s.rebO)}o/${z(s.rebD)}d</small>`:""}</td><td>${z(s.int)}</td><td>${s.ctr}</td><td>${s.pas}</td><td>${s.def}</td><td>${s.per}${z(s.perP)+z(s.perU)?`<br><small class="mut">${z(s.perP)}p/${z(s.perU)}i</small>`:""}</td><td>${s.fau}</td><td>${z(s.fsu)}</td><td>${ev(s)}</td><td>${played(p.id)?nB(note(s)):"–"}</td></tr>`).join("")}
  ${rows.length?(()=>{const t={};KS.forEach(k=>t[k]=rows.reduce((a,{s})=>a+z(s[k]),0));return`<tr style="font-weight:800;border-top:2px solid var(--or)"><td>Équipe</td><td></td><td>${pts(t)}</td><td>${fgM(t)}/${fgA(t)}</td><td style="color:#4ade80">${pct(fgM(t),fgA(t))}</td><td style="color:#f87171">${pct(fgA(t)-fgM(t),fgA(t))}</td><td>${t.p3}/${t.p3+t.p3M}</td><td>${t.lfR}/${t.lfR+t.lfM}</td><td>${t.reb}${t.rebO+t.rebD?`<br><small class="mut">${t.rebO}o/${t.rebD}d</small>`:""}</td><td>${t.int}</td><td>${t.ctr}</td><td>${t.pas}</td><td>${t.def}</td><td>${t.per}${t.perP+t.perU?`<br><small class="mut">${t.perP}p/${t.perU}i</small>`:""}</td><td>${t.fau}</td><td>${t.fsu}</td><td>${ev(t)}</td><td></td></tr>`})():""}</table></div>
- <p class="mut" style="margin:8px 0 0">Tirs = tirs réussis / tentés (2 et 3 pts, hors LF) · % ✓ réussis · % ✗ ratés · Pdb = pertes de balle · F = fautes provoquées (commises) · FS = fautes subies · o/d = rebonds offensifs/défensifs · p/i = pertes provoquées/personnelles (individuelles)<br>Éval = pts + reb + passes + interceptions + contres + déf. réussies + fautes subies − pertes − fautes provoquées − tirs ratés − LF ratés<br>Note /100 = 40 + 4 × Éval · 🟢 80+ excellent · 🔵 65+ bon · 🟡 50+ correct · 🔴 à améliorer</p></div>
+ <p class="mut" style="margin:8px 0 0">Tirs = tirs réussis / tentés (2 et 3 pts, hors LF) · % ✓ réussis · % ✗ ratés · Pdb = pertes de balle · F = fautes provoquées (commises) · FS = fautes subies · o/d = rebonds offensifs/défensifs · p/i = pertes provoquées/personnelles (individuelles)<br>Éval = pts + reb + passes + interceptions + contres + déf. réussies + fautes subies − pertes − fautes provoquées − tirs ratés − LF ratés<br>Note /100 = adresse /30 + attaque /20 + rebonds &amp; passes /20 + défense /20 + discipline /10 · 🟢 80+ excellent · 🔵 65+ bon · 🟡 50+ correct · 🔴 à améliorer</p></div>
  ${seasonCard()}
  <button class="b gr" style="width:100%;margin-bottom:8px" onclick="saveDlg()">💾 Enregistrer les stats des joueurs sélectionnés</button>${D.curHist?`<p class="mut" style="margin:0 0 8px;text-align:center">✅ Match enregistré — un nouvel enregistrement le met à jour</p>`:""}
  <button class="b" style="width:100%" onclick="exportDlg()">📤 Exporter les stats</button>`;
@@ -382,7 +413,7 @@ function lockNow(){if(D.pinHash){unlocked=false;return render()}if(cur!=="guest"
 
 function showConsent(){const o=$("#ov");o.classList.remove("hid");o.innerHTML=`<div class="card"><h2 style="font-size:20px">🏀 Bienvenue dans Stat Player : Basket</h2>
  <h2>Protection de tes données</h2><p>Cette application enregistre le <b>nom des joueurs</b> et leurs <b>statistiques de match</b>.</p>
- <p>✅ Données stockées uniquement sur ce téléphone<br>✅ ${NATIVE?"Aucun accès Internet, aucun envoi":"Fonctionne hors connexion, aucun envoi"}<br>✅ Aucune publicité ni traceur<br>✅ Export et effacement à tout moment (onglet Données)<br>✅ Code PIN possible</p>
+ <p>✅ Données stockées uniquement sur ce téléphone<br>✅ ${NATIVE?"Aucun accès Internet, aucun envoi":"Fonctionne hors connexion, aucun envoi"}<br>✅ Aucune publicité ni traceur<br>✅ Export et effacement à tout moment (écran Données (🛡️ en haut à droite))<br>✅ Code PIN possible</p>
  <p class="mut">Pour des joueurs mineurs, assure-toi d'avoir l'accord des parents ou responsables.</p>
  <button class="b" style="width:100%" onclick="D.consent=true;save();render()">J'ai compris et j'accepte</button></div>`}
 
@@ -470,7 +501,7 @@ function vFiche(){
  <p class="mut" style="margin:10px 0 0">Tirs : <b style="color:var(--txt)">${fgM(T)}/${fgA(T)}</b> (${pct(fgM(T),fgA(T))} réussis, ${pct(fgA(T)-fgM(T),fgA(T))} ratés) · 3 pts : <b style="color:var(--txt)">${z(T.p3)}/${z(T.p3)+z(T.p3M)}</b><br>Lancers francs : <b style="color:var(--txt)">${T.lfR}/${lfT}</b> ${lfT?`(${Math.round(T.lfR*100/lfT)} %)`:""} · Total : <b style="color:var(--txt)">${pts(T)} pts</b>, ${T.reb} reb, ${T.pas} passes</p></div>
  <div class="card"><h2>📅 Matchs enregistrés</h2>${n?`<div class="tw"><table><tr><th>Match</th><th>Min</th><th>Pts</th><th>LF</th><th>Reb</th><th>Int</th><th>Ctr</th><th>Pas</th><th>Déf</th><th>Pdb</th><th>F</th><th>Note</th><th></th></tr>
  ${H.map(({m,s})=>`<tr><td>${TYPES[mt(m)].i} ${esc(m.date.slice(8,10)+"/"+m.date.slice(5,7))}${m.opp?"<br><span class='mut'>"+esc(m.opp)+"</span>":""}</td><td>${fmt(s.min||0)}</td><td><b>${pts(s)}</b></td><td>${s.lfR}/${s.lfR+s.lfM}</td><td>${s.reb}${z(s.rebO)+z(s.rebD)?`<br><small class="mut">${z(s.rebO)}o/${z(s.rebD)}d</small>`:""}</td><td>${z(s.int)}</td><td>${s.ctr}</td><td>${s.pas}</td><td>${s.def}</td><td>${s.per}</td><td>${s.fau}</td><td>${nB(note(s))}</td><td><button class="ico" style="font-size:15px;padding:2px" onclick="delHist('${m.id}')">🗑️</button></td></tr>`).join("")}</table></div>`:`<p class="mut">Aucun match enregistré. Dans l'onglet <b>Stats</b>, touche « Enregistrer les stats des joueurs sélectionnés ».</p>`}</div>
- <div class="card"><h2>📝 Notes (${OB.length})</h2>${OB.length?OB.map(obHtml).join(""):`<p class="mut">Aucune note. Utilise l'onglet <b>Note</b>.</p>`}<button class="b sec" style="width:100%;margin-top:6px" onclick="sel='${fp}';tab='observer';render()">＋ Ajouter une note</button></div>
+ <div class="card"><h2>📝 Notes (${OB.length})</h2>${OB.length?OB.map(obHtml).join(""):`<p class="mut">Aucune note. Utilise l'onglet <b>Notes</b>.</p>`}<button class="b sec" style="width:100%;margin-top:6px" onclick="sel='${fp}';tab='observer';render()">＋ Ajouter une note</button></div>
  ${n||OB.length?`<button class="b" style="width:100%" onclick="shareFiche()">📤 Partager la fiche</button>`:""}`;
 }
 function delHist(mid){if(!confirm("Retirer ce match de la fiche du joueur ?"))return;const m=D.history.find(x=>x.id===mid);if(m){delete m.players[fp];if(!Object.keys(m.players).length){D.history=D.history.filter(x=>x!==m);if(D.curHist===mid)D.curHist=null}}save();vFiche()}
@@ -503,7 +534,7 @@ let obCat="Général",obFilter="all";
 const catOf=k=>CATS.find(c=>c.k===k)||CATS[3];
 function obHtml(o){const c=catOf(o.cat);return`<div class="ob" style="border-color:${c.c}"><div class="row" style="justify-content:space-between"><b style="flex:none;color:${c.c}">${c.i} ${esc(o.cat)}</b><span class="mut" style="flex:1;text-align:right">${esc(o.date.slice(8,10)+"/"+o.date.slice(5,7)+"/"+o.date.slice(0,4))}${o.opp?" · vs "+esc(o.opp):""}</span><button class="ico" style="flex:none;font-size:15px;padding:0 0 0 6px" onclick="delObs('${o.id}')">🗑️</button></div><p>${esc(o.txt)}</p></div>`}
 function vObs(){
- if(!D.players.length){$("#app").innerHTML=`<div class="card"><p>Ajoute d'abord des joueurs dans l'onglet <b>Joueurs</b>.</p></div>`;return}
+ if(!D.players.length){$("#app").innerHTML=`<div class="card"><p>Ajoute d'abord des joueurs dans l'onglet <b>Équipe</b>.</p></div>`;return}
  if(!sel||!D.players.find(p=>p.id===sel))sel=D.players[0].id;
  const p=D.players.find(x=>x.id===sel),draft=$("#otx")?$("#otx").value:"";
  const OB=D.obs.filter(o=>o.pid===sel&&(obFilter==="all"||o.cat===obFilter)).sort((a,b)=>b.ts-a.ts);
@@ -673,7 +704,7 @@ function exportAs(f){commitTimes();const m=exScope!=="season",se=exScope!=="matc
   if(m){b+=`<h2>${TYPES[mt(D.match)].l} ${D.match.opp?"vs "+esc(D.match.opp):""} – ${esc(D.match.date)}</h2><p>Score équipe : <b>${D.players.reduce((a,x)=>a+pts(S(x.id)),0)} pts</b></p><table>${th(["Joueur","Min","Pts","Tirs","% réussi","% raté","LF","Reb","Int","Ctr","Pas","Déf","Pdb","F","FS","Éval","Note"])}${D.players.map(p=>{const s=S(p.id);return tr([(p.num?"#"+esc(p.num)+" ":"")+esc(p.name),fmt(ptime(p.id)),"<b>"+pts(s)+"</b>",fgM(s)+"/"+fgA(s),pct(fgM(s),fgA(s)),pct(fgA(s)-fgM(s),fgA(s)),s.lfR+"/"+(s.lfR+s.lfM),s.reb,z(s.int),s.ctr,s.pas,s.def,s.per,s.fau,z(s.fsu),ev(s),played(p.id)?"<b>"+note(s)+"</b>":"–"])}).join("")}</table>`}
   if(se&&R.length){b+=`<h2>Moyennes par match – ${hf==="all"?"tous les matchs":TYPES[hf].l.toLowerCase()}</h2><table>${th(["Joueur","MJ","Min","Pts","Reb","Pas","Int","Ctr","Déf","Pdb","F","LF %","Note moy."])}${R.map(({p,n,T,nm})=>{const l=T.lfR+T.lfM;return tr([esc(p.name),n,fmt(T.min/n),"<b>"+av1(pts(T),n)+"</b>",av1(T.reb,n),av1(T.pas,n),av1(T.int,n),av1(T.ctr,n),av1(T.def,n),av1(T.per,n),av1(T.fau,n),l?Math.round(T.lfR*100/l)+" %":"–","<b>"+nm+"</b>"])}).join("")}</table>`}
   if(!b)return toast("Rien à exporter","var(--yl)");
-  const html=`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Stat Player – ${esc(D.match.date)}</title><style>body{font-family:Arial,sans-serif;color:#111;margin:24px;font-size:12px}h1{color:#ea580c;margin:0 0 4px;font-size:22px}h2{font-size:15px;margin:22px 0 6px;color:#0f172a;border-bottom:2px solid #f97316;padding-bottom:3px}table{width:100%;border-collapse:collapse}th{background:#0f172a;color:#fff;font-size:10px;padding:5px 3px}td{padding:5px 3px;border-bottom:1px solid #ddd;text-align:center}td:first-child,th:first-child{text-align:left}tr:nth-child(even) td{background:#f8fafc}.f{margin-top:24px;color:#666;font-size:9px}</style></head><body><h1>🏀 Stat Player : Basket</h1><div>Rapport du ${new Date().toLocaleDateString("fr-FR")}</div>${b}<p class="f">Pdb = pertes de balle · MJ = matchs joués · Tirs = réussis/tentés (2 et 3 pts) · Éval = pts + reb + passes + interceptions + contres + déf. réussies + fautes subies − pertes − fautes provoquées − tirs ratés − LF ratés · F = fautes provoquées · FS = fautes subies · Note /100 = 40 + 4 × Éval</p></body></html>`;
+  const html=`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Stat Player – ${esc(D.match.date)}</title><style>body{font-family:Arial,sans-serif;color:#111;margin:24px;font-size:12px}h1{color:#ea580c;margin:0 0 4px;font-size:22px}h2{font-size:15px;margin:22px 0 6px;color:#0f172a;border-bottom:2px solid #f97316;padding-bottom:3px}table{width:100%;border-collapse:collapse}th{background:#0f172a;color:#fff;font-size:10px;padding:5px 3px}td{padding:5px 3px;border-bottom:1px solid #ddd;text-align:center}td:first-child,th:first-child{text-align:left}tr:nth-child(even) td{background:#f8fafc}.f{margin-top:24px;color:#666;font-size:9px}</style></head><body><h1>🏀 Stat Player : Basket</h1><div>Rapport du ${new Date().toLocaleDateString("fr-FR")}</div>${b}<p class="f">Pdb = pertes de balle · MJ = matchs joués · Tirs = réussis/tentés (2 et 3 pts) · Éval = pts + reb + passes + interceptions + contres + déf. réussies + fautes subies − pertes − fautes provoquées − tirs ratés − LF ratés · F = fautes provoquées · FS = fautes subies · Note /100 = adresse /30 + attaque /20 + rebonds &amp; passes /20 + défense /20 + discipline /10</p></body></html>`;
   if(window.AndroidPrint){AndroidPrint.print(html,"StatPlayer-"+D.match.date);toast("Choisis « Enregistrer au format PDF »");return render()}
   const fr=document.createElement("iframe");fr.style.cssText="position:fixed;width:0;height:0;border:0;right:0;bottom:0";document.body.appendChild(fr);fr.contentDocument.open();fr.contentDocument.write(html);fr.contentDocument.close();
   setTimeout(()=>{try{fr.contentWindow.focus();fr.contentWindow.print()}catch(e){sendFile(exName("html"),html,"text/html")}setTimeout(()=>fr.remove(),60000)},400);toast("Imprimante : choisis « Enregistrer en PDF »");return render()}
