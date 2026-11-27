@@ -169,6 +169,28 @@ public class MainActivity extends Activity implements LifecycleOwner {
             startActivity(Intent.createChooser(i, "Partager"));
         }
 
+        // Partage d'une image (PNG envoyée en base64 par la page), par ex. le bilan du match
+        @JavascriptInterface
+        public boolean shareImage(String name, String b64) {
+            try {
+                File dir = new File(getCacheDir(), "partage");
+                dir.mkdirs();
+                File f = new File(dir, name.replaceAll("[^A-Za-z0-9._-]", "_"));
+                FileOutputStream o = new FileOutputStream(f);
+                o.write(android.util.Base64.decode(b64, android.util.Base64.DEFAULT));
+                o.close();
+                Uri u = FileProvider.getUriForFile(MainActivity.this, getPackageName() + ".fichiers", f);
+                Intent i = new Intent(Intent.ACTION_SEND);
+                i.setType("image/png");
+                i.putExtra(Intent.EXTRA_STREAM, u);
+                i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                startActivity(Intent.createChooser(i, "Partager le bilan"));
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
         @JavascriptInterface
         public boolean shareFile(String name, String text) { return shareFileType(name, text, "text/plain"); }
 
