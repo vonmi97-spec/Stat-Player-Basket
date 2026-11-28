@@ -37,4 +37,6 @@ dependencies {
     implementation "androidx.camera:camera-view:$cx"
     implementation 'androidx.lifecycle:lifecycle-runtime:2.6.2'
     implementation 'com.google.guava:listenablefuture:1.0'
+    // Reconnaissance des numéros de maillot (IA sur le téléphone, modèle intégré, sans Internet)
+    implementation 'com.google.mlkit:text-recognition:16.0.1'
 }

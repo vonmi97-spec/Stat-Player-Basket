@@ -57,6 +57,16 @@ import android.print.PrintAttributes;
 import android.print.PrintManager;
 import androidx.core.content.FileProvider;
 import java.io.File;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.util.Base64;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import com.google.mlkit.vision.common.InputImage;
+import com.google.mlkit.vision.text.Text;
+import com.google.mlkit.vision.text.TextRecognition;
+import com.google.mlkit.vision.text.TextRecognizer;
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions;
 import java.io.FileOutputStream;
 
 public class MainActivity extends Activity implements LifecycleOwner {
@@ -119,6 +129,7 @@ public class MainActivity extends Activity implements LifecycleOwner {
         web.addJavascriptInterface(new Bridge(), "Android");
         web.addJavascriptInterface(new PrintBridge(), "AndroidPrint");
         web.addJavascriptInterface(new VideoBridge(), "AndroidVideo");
+        web.addJavascriptInterface(new OcrBridge(), "AndroidOCR");
         web.loadUrl("file:///android_asset/index.html");
         // Zone vidéo (aperçu caméra ou lecture) au-dessus de l'appli, ou à gauche en mode paysage
         // Affichage jusque sous l'encoche (plus de bande noire en haut)
@@ -232,6 +243,47 @@ public class MainActivity extends Activity implements LifecycleOwner {
                 pv.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null);
                 printView = pv;
             });
+        }
+    }
+
+    // ===== Reconnaissance des numéros de maillot (IA sur le téléphone, ML Kit, sans Internet) =====
+    private PreviewView recPv; // aperçu de la vidéo en cours d'enregistrement
+    private TextRecognizer textRec;
+    private TextRecognizer rec() { if (textRec == null) textRec = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS); return textRec; }
+    private void ocrJs(String cb, String json) {
+        final String code = "window.ocrCb&&ocrCb(" + JSONObject.quote(cb) + "," + (json == null ? "null" : json) + ")";
+        runOnUiThread(() -> { if (web != null) web.evaluateJavascript(code, null); });
+    }
+    private void ocrRun(String cb, Bitmap b) {
+        if (b == null) { ocrJs(cb, null); return; }
+        try {
+            final int W = b.getWidth(), H = b.getHeight();
+            rec().process(InputImage.fromBitmap(b, 0)).addOnSuccessListener(t -> {
+                try {
+                    JSONArray a = new JSONArray();
+                    for (Text.TextBlock bl : t.getTextBlocks()) for (Text.Line ln : bl.getLines()) for (Text.Element el : ln.getElements()) {
+                        Rect r = el.getBoundingBox();
+                        JSONObject o = new JSONObject();
+                        o.put("t", el.getText());
+                        if (r != null) { o.put("h", r.height() / (double) H); o.put("x", r.centerX() / (double) W); o.put("y", r.centerY() / (double) H); }
+                        a.put(o);
+                    }
+                    ocrJs(cb, a.toString());
+                } catch (Exception e) { ocrJs(cb, null); }
+            }).addOnFailureListener(e -> ocrJs(cb, null));
+        } catch (Exception e) { ocrJs(cb, null); }
+    }
+    class OcrBridge {
+        // Image envoyée par la page (caméra du scan) en JPEG base64
+        @JavascriptInterface public void read(String cb, String b64) {
+            try { byte[] d = Base64.decode(b64, Base64.DEFAULT); ocrRun(cb, BitmapFactory.decodeByteArray(d, 0, d.length)); }
+            catch (Exception e) { ocrJs(cb, null); }
+        }
+        // Image de la vidéo en cours d'enregistrement
+        @JavascriptInterface public boolean preview(String cb) {
+            if (recording == null || recPv == null) return false;
+            runOnUiThread(() -> { Bitmap b = null; try { b = recPv.getBitmap(); } catch (Exception e) {} ocrRun(cb, b); });
+            return true;
         }
     }
 
@@ -412,6 +464,7 @@ public class MainActivity extends Activity implements LifecycleOwner {
         vidClose();
         final PreviewView pv = new PreviewView(this);
         pv.setScaleType(PreviewView.ScaleType.FIT_CENTER);
+        recPv = pv;
         FrameLayout box = new FrameLayout(this);
         box.addView(pv, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         TextView dot = new TextView(this);

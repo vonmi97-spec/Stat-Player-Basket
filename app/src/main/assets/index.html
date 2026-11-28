@@ -264,6 +264,7 @@ function vMatch(){
 function sheetHtml(){return`<div style="height:48vh"></div><div class="card sheet"><h2 style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><span style="min-width:0">② ${!arm?"Puis touche le joueur":duo&&(nx.length||duoPs.length)?`Joueur ${duoPs.length+1} → « ${LAB[arm]} »`:duo?`Attribuer « ${LAB[arm]} » à… <span class="mut" style="font-weight:400">(ou choisis une 2e stat)</span>`:`Attribuer « ${[arm,...nx].map(k=>LAB[k]).join(" + ")} » à…`}</span><button class="chip" style="flex:none;padding:6px 10px" onclick="clrSel()">✕</button></h2>
  ${duoPs.length?`<p class="mut" style="margin:-4px 0 10px">${duoPs.map((id,i)=>`Joueur ${i+1} : <b>${esc((D.players.find(x=>x.id===id)||{}).name||"?")}</b> ✅`).join(" · ")}${nx.length?` · encore ${nx.length+1}`:""}</p>`:""}
  ${(()=>{const n=D.players.filter(x=>D.onCourt[x.id]).length;return`<div class="row" style="margin:-4px 0 10px"><span class="mut" style="flex:2">${n?`🏀 ${n} joueur${n>1?"s":""} sur le terrain`:"Aucun joueur sur le terrain : touche 🔄 pour choisir le 5 de départ"}</span><button class="chip" style="flex:none" onclick="chgDlg()">🔄</button>${n&&n<D.players.length?`<button class="chip" style="flex:none" onclick="bench=!bench;vMatch()">${bench?"Masquer le banc":"Voir le banc"}</button>`:""}</div>`})()}
+ <button class="b" style="width:100%;margin-bottom:10px" onclick="numOpen()">📷 Lire le numéro du maillot <small style="font-weight:400;opacity:.85">· IA</small></button>
  <div class="grid" style="grid-template-columns:repeat(2,1fr)">${[...D.players].filter(x=>bench||D.onCourt[x.id]||!D.players.some(y=>D.onCourt[y.id])).sort((a,b)=>(D.onCourt[b.id]?1:0)-(D.onCourt[a.id]?1:0)).map(x=>{const q=S(x.id);return`<button class="st" style="position:relative;background:${x.id===sel?"#334155":"#0b1222"};border:1px solid ${q.fau>=5?"var(--rd)":"var(--line)"};display:flex;align-items:center;gap:8px;text-align:left;padding:8px;opacity:${arm&&!duoPs.includes(x.id)?1:.6}" onclick="assign('${x.id}')">${duoPs.includes(x.id)?`<span style="position:absolute;top:2px;right:6px">${CN[duoPs.indexOf(x.id)]}</span>`:""}<span class="num" style="width:32px;height:32px;font-size:14px">${esc(x.num||"–")}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.name)}<small>${pts(q)} pts · ${q.fau} F${q.fau>=5?" ⚠️":""}</small></span></button>`}).join("")}</div></div>`}
 function clrSel(){arm=null;nx=[];if(duoPs.length){duoPs=[];duoG=null}render()}
 /* Mode Duo : arm = stat en cours, nx = stats suivantes ; duoPs = joueurs déjà servis, duoG = identifiant de l'action groupée */
@@ -409,7 +410,7 @@ function vDonnees(){
  <div class="row"><button class="b" onclick="showPin('set1')">${D.pinHash?"Changer le PIN":"Définir un PIN"}</button>${D.pinHash?`<button class="b sec" onclick="remPin()">Retirer le PIN</button>`:""}</div></div>
  <div class="card"><h2>📦 Mes données (droit d'accès)</h2><p class="mut">Exporte toutes les données dans un fichier texte que tu peux garder.</p><button class="b sec" style="width:100%" onclick="exportData()">📤 Exporter mes données</button></div>
  <div class="card"><h2>🗑️ Droit à l'effacement</h2><p class="mut">Supprime définitivement tous les joueurs, stats et réglages de ce téléphone.</p><button class="b red" style="width:100%" onclick="wipe()">Effacer toutes les données</button></div>
- <p class="mut" style="text-align:center">Stat Player : Basket · v1.25</p>`;
+ <p class="mut" style="text-align:center">Stat Player : Basket · v1.26</p>`;
 }
 function exportData(){const c={...D};delete c.pinHash;const t=JSON.stringify(c,null,2);if(window.Android&&Android.share)Android.share(t);else if(navigator.share)navigator.share({text:t}).catch(()=>{});else{try{navigator.clipboard.writeText(t);toast("Données copiées")}catch(e){alert(t)}}}
 function wipe(){if(!confirm("Effacer TOUTES les données ? Action irréversible."))return;if(!confirm("Confirmer l'effacement définitif ?"))return;try{localStorage.removeItem(dkey())}catch(e){}delete memS[dkey()];D=blank();unlocked=true;sel=null;tab="joueurs";render();toast("Données effacées","var(--rd)")}
@@ -766,6 +767,51 @@ function chartHtml(H){const M=GRM[grM],A=[...H].reverse(),v=A.map(({s})=>M.f(s))
  ${n>1?`<polyline points="${v.map((y,i)=>X(i)+","+Y(y)).join(" ")}" fill="none" stroke="${M.c}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`:""}
  ${v.map((y,i)=>`<circle cx="${X(i)}" cy="${Y(y)}" r="3.5" fill="${M.c}" stroke="#0b1120" stroke-width="1.5"/>${n<=12||i%step===0||i===n-1?`<text x="${X(i)}" y="${Y(y)-8}" font-size="10" font-weight="700" fill="#f1f5f9" text-anchor="middle">${y}</text><text x="${X(i)}" y="${Hh-10}" font-size="9" fill="#94a3b8" text-anchor="middle">${esc(A[i].m.date.slice(8,10)+"/"+A[i].m.date.slice(5,7))}</text>`:""}`).join("")}</svg>
  <p class="mut" style="margin:6px 0 0;font-size:12px">Moyenne : <b style="color:${M.c}">${(Math.round(avg*10)/10).toString().replace(".",",")}${grM==="min"?" min":""}</b> (pointillés) · du plus ancien au plus récent${n>1?` · dernier match ${v[n-1]>=avg?"au-dessus":"en dessous"} de la moyenne`:""}</p>`}
+
+/* ===== Reconnaissance des numéros de maillot (IA) =====
+   Android : ML Kit, sur le téléphone, sans Internet (y compris sur l'image de la vidéo en cours d'enregistrement).
+   iPhone / navigateur : Tesseract.js, téléchargé la première fois (connexion nécessaire une fois). */
+const TESS="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+let ocr={on:false,busy:false,stream:null,timer:null,hits:{},cand:null,worker:null,mode:"",seq:0,seen:""};
+const numKey=v=>{v=String(v||"").trim();return /^\d+$/.test(v)?String(parseInt(v,10))+(v.length>1&&v[0]==="0"?"z"+v.length:""):v};
+const ocrAuto=()=>!!((D.ui||{}).ocrAuto);
+function numOpen(){if(!arm)return toast("Choisis d'abord une stat","var(--yl)");
+ if(!D.players.some(p=>String(p.num||"").trim()))return toast("Ajoute les numéros des joueurs dans l'onglet Équipe","var(--yl)");
+ ocr.hits={};ocr.cand=null;ocr.seen="";ocr.on=true;ocr.busy=false;
+ const pv=!!(vcur&&window.AndroidOCR&&AndroidOCR.preview);ocr.mode=pv?"preview":window.AndroidOCR?"native":"tess";
+ ov(`<h2 style="display:flex;justify-content:space-between;align-items:center">📷 Lire le numéro<button class="chip ${ocrAuto()?"on":""}" style="font-size:12px;padding:5px 10px" onclick="D.ui=D.ui||{};D.ui.ocrAuto=!ocrAuto();save();this.classList.toggle('on')">⚡ Auto</button></h2>
+ <p class="mut" style="margin-top:0">${pv?"Lecture sur l'image de la vidéo en cours : garde le maillot dans le cadre de la vidéo.":"Vise le numéro du maillot dans le cadre orange."} Stat : <b style="color:var(--txt)">${[arm,...nx].map(k=>LAB[k]).join(" + ")}</b></p>
+ ${pv?"":`<div style="position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:4/3"><video id="ocv" playsinline muted autoplay style="width:100%;height:100%;object-fit:cover"></video><div style="position:absolute;left:20%;right:20%;top:15%;bottom:15%;border:3px solid var(--or);border-radius:12px;box-shadow:0 0 0 999px rgba(0,0,0,.35)"></div></div>`}
+ <p id="ocs" class="mut" style="text-align:center;margin:10px 0">Démarrage…</p><div id="occ" style="margin-bottom:10px"></div>
+ <p class="mut" style="font-size:12px;margin:0 0 10px">⚡ Auto : la stat est attribuée dès que le même numéro est lu 2 fois de suite. Sinon, touche le joueur proposé.</p>
+ <button class="b sec" style="width:100%" onclick="numClose()">Fermer</button>`);
+ if(pv)return ocrLoop();
+ navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1280},height:{ideal:960}},audio:false}).then(st=>{if(!ocr.on){st.getTracks().forEach(t=>t.stop());return}ocr.stream=st;const v=$("#ocv");v.srcObject=st;v.play().catch(()=>{});ocrLoop()})
+  .catch(()=>{ocrSt(vcur?"La caméra est utilisée par la vidéo : installe la dernière version Android pour lire sur la vidéo.":"Caméra refusée : autorise-la dans les réglages du téléphone.")})}
+function ocrSt(t){const e=$("#ocs");if(e)e.innerHTML=t}
+function numClose(){ocr.on=false;clearTimeout(ocr.timer);if(ocr.stream){ocr.stream.getTracks().forEach(t=>t.stop());ocr.stream=null}render()}
+function ocrLoop(){clearTimeout(ocr.timer);if(!ocr.on)return;ocr.timer=setTimeout(ocrStep,ocr.mode==="tess"?250:450)}
+async function ocrStep(){if(!ocr.on)return;if(ocr.busy)return ocrLoop();ocr.busy=true;const id="o"+(++ocr.seq);
+ try{if(ocr.mode==="preview"){ocrSt("🔎 Lecture de la vidéo…");if(!AndroidOCR.preview(id)){ocr.busy=false;ocrSt("Vidéo arrêtée");return}return}
+  const v=$("#ocv");if(!v||!v.videoWidth){ocr.busy=false;return ocrLoop()}
+  const sx=v.videoWidth*.2,sy=v.videoHeight*.15,sw=v.videoWidth*.6,sh=v.videoHeight*.7,sc=Math.min(1,900/sw),c=document.createElement("canvas");c.width=Math.round(sw*sc);c.height=Math.round(sh*sc);c.getContext("2d").drawImage(v,sx,sy,sw,sh,0,0,c.width,c.height);
+  if(ocr.mode==="native"){AndroidOCR.read(id,c.toDataURL("image/jpeg",.85).split(",")[1]);return}
+  if(!ocr.worker){ocrSt("⏳ Chargement de l'IA (la première fois, il faut Internet)…");await loadLib(TESS);ocr.worker=await Tesseract.createWorker("eng");await ocr.worker.setParameters({tessedit_char_whitelist:"0123456789",tessedit_pageseg_mode:"11"})}
+  if(!ocr.on){ocr.busy=false;return}ocrSt("🔎 Recherche d'un numéro…");
+  const r=await ocr.worker.recognize(c),H=c.height;ocrCb(id,(r.data.words||[]).filter(w=>w.confidence>=55).map(w=>({t:w.text,h:(w.bbox.y1-w.bbox.y0)/H})))}
+ catch(e){ocr.busy=false;ocrSt("❌ IA indisponible : vérifie la connexion Internet (nécessaire la première fois).");if(ocr.mode==="tess")ocr.worker=null}}
+function ocrCb(id,words){ocr.busy=false;if(!ocr.on)return;
+ const byNum={};D.players.forEach(p=>{const k=numKey(p.num);if(k)(byNum[k]=byNum[k]||[]).push(p)});
+ const seen=(words||[]).map(w=>({t:String(w.t||"").replace(/[^0-9]/g,""),h:+w.h||0})).filter(w=>w.t.length&&w.t.length<=2).sort((a,b)=>b.h-a.h);
+ const match=seen.find(w=>byNum[numKey(w.t)]);
+ Object.keys(ocr.hits).forEach(k=>{if(!match||k!==numKey(match.t))ocr.hits[k]=Math.max(0,ocr.hits[k]-1)});
+ if(match){const k=numKey(match.t);ocr.hits[k]=(ocr.hits[k]||0)+1;
+  const L=byNum[k].slice().sort((a,b)=>(D.onCourt[b.id]?1:0)-(D.onCourt[a.id]?1:0));
+  if(ocr.hits[k]>=2&&ocrAuto()&&L.length===1){vib();return numPick(L[0].id)}
+  if(ocr.cand!==k){ocr.cand=k;vib();const e=$("#occ");if(e)e.innerHTML=`<p style="margin:0 0 6px;font-weight:700;text-align:center">Numéro lu : <span style="color:var(--or);font-size:22px">${esc(match.t)}</span></p>${L.map(p=>`<button class="b gr" style="width:100%;margin-bottom:6px;font-size:17px" onclick="numPick('${p.id}')">✅ #${esc(p.num)} ${esc(p.name)}${D.onCourt[p.id]?"":" <small>(banc)</small>"}</button>`).join("")}`}}
+ const t=seen.map(w=>w.t).slice(0,4).join(", ");ocrSt(seen.length?`Lu : <b style="color:var(--txt)">${esc(t)}</b>${match?"":" · aucun joueur avec ce numéro"}`:"🔎 Aucun numéro lu : rapproche-toi ou garde le maillot bien droit");
+ ocrLoop()}
+function numPick(id){ocr.on=false;clearTimeout(ocr.timer);if(ocr.stream){ocr.stream.getTracks().forEach(t=>t.stop());ocr.stream=null}$("#ov").classList.add("hid");assign(id)}
 
 /* ===== Synchronisation par QR code (sans Internet, chiffrée) ===== */
 const libs={};
