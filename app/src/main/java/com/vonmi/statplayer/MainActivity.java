@@ -285,6 +285,23 @@ public class MainActivity extends Activity implements LifecycleOwner {
             runOnUiThread(() -> { Bitmap b = null; try { b = recPv.getBitmap(); } catch (Exception e) {} ocrRun(cb, b); });
             return true;
         }
+        // Même chose avec un zoom numérique (recadrage au centre de l'image)
+        @JavascriptInterface public boolean previewZ(String cb, double z) {
+            if (recording == null || recPv == null) return false;
+            final double k = Math.max(1, Math.min(8, z));
+            runOnUiThread(() -> {
+                Bitmap b = null;
+                try {
+                    b = recPv.getBitmap();
+                    if (b != null && k > 1.01) {
+                        int w = (int) (b.getWidth() / k), h = (int) (b.getHeight() / k);
+                        b = Bitmap.createBitmap(b, (b.getWidth() - w) / 2, (b.getHeight() - h) / 2, w, h);
+                    }
+                } catch (Exception e) {}
+                ocrRun(cb, b);
+            });
+            return true;
+        }
     }
 
     @Override public void onBackPressed() { if (web.canGoBack()) web.goBack(); else super.onBackPressed(); }
