@@ -39,4 +39,5 @@ dependencies {
     implementation 'com.google.guava:listenablefuture:1.0'
     // Reconnaissance des numéros de maillot (IA sur le téléphone, modèle intégré, sans Internet)
     implementation 'com.google.mlkit:text-recognition:16.0.1'
+    implementation platform('org.jetbrains.kotlin:kotlin-bom:1.8.22') // aligne les versions Kotlin tirées par ML Kit
 }
