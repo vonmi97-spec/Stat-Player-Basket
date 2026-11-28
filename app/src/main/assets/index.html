@@ -410,7 +410,7 @@ function vDonnees(){
  <div class="row"><button class="b" onclick="showPin('set1')">${D.pinHash?"Changer le PIN":"Définir un PIN"}</button>${D.pinHash?`<button class="b sec" onclick="remPin()">Retirer le PIN</button>`:""}</div></div>
  <div class="card"><h2>📦 Mes données (droit d'accès)</h2><p class="mut">Exporte toutes les données dans un fichier texte que tu peux garder.</p><button class="b sec" style="width:100%" onclick="exportData()">📤 Exporter mes données</button></div>
  <div class="card"><h2>🗑️ Droit à l'effacement</h2><p class="mut">Supprime définitivement tous les joueurs, stats et réglages de ce téléphone.</p><button class="b red" style="width:100%" onclick="wipe()">Effacer toutes les données</button></div>
- <p class="mut" style="text-align:center">Stat Player : Basket · v1.26</p>`;
+ <p class="mut" style="text-align:center">Stat Player : Basket · v1.27</p>`;
 }
 function exportData(){const c={...D};delete c.pinHash;const t=JSON.stringify(c,null,2);if(window.Android&&Android.share)Android.share(t);else if(navigator.share)navigator.share({text:t}).catch(()=>{});else{try{navigator.clipboard.writeText(t);toast("Données copiées")}catch(e){alert(t)}}}
 function wipe(){if(!confirm("Effacer TOUTES les données ? Action irréversible."))return;if(!confirm("Confirmer l'effacement définitif ?"))return;try{localStorage.removeItem(dkey())}catch(e){}delete memS[dkey()];D=blank();unlocked=true;sel=null;tab="joueurs";render();toast("Données effacées","var(--rd)")}
@@ -440,7 +440,7 @@ const KS=["p2","p2M","p3","p3M","lfR","lfM","reb","rebO","rebD","int","ctr","pas
 const ALSO={rebO:"reb",rebD:"reb",perP:"per",perU:"per"}; // un rebond offensif/défensif compte aussi dans le total des rebonds
 const played=id=>KS.some(k=>S(id)[k]>0)||ptime(id)>0;
 /* ===== Types de match : championnat, amical, entraînement ===== */
-const TYPES={off:{i:"🏆",l:"Championnat"},ami:{i:"🤝",l:"Match amical"},ent:{i:"🏋️",l:"Match d'entraînement"}};
+const TYPES={off:{i:"🏆",l:"Championnat"},ami:{i:"🤝",l:"Match amical"},tou:{i:"🏅",l:"Tournoi"},ent:{i:"🏋️",l:"Match d'entraînement"}};
 const mt=m=>TYPES[m&&m.type]?m.type:"off";
 let hf="all"; // onglet de filtre affiché dans Stats et la fiche joueur
 const inF=m=>hf==="all"||mt(m)===hf;
